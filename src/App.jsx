@@ -13,7 +13,7 @@ import CreateMeeting from "./pages/admin/CreateMeeting";
 import UserDashboard from "./pages/user/Dashboard";
 import JoinMeeting from "./pages/user/JoinMeeting";
 import MeetingRoom from "./pages/user/MeetingRoom";
-import Dashboard from "./pages/admin/AdminDashboard";
+
 import InviteUser from "./pages/admin/InviteUser";
 import Employees from "./pages/admin/Employees";
 import UserMeetings from "./pages/user/UserMeetings";
@@ -45,17 +45,20 @@ function App() {
         <Route path="/user/login" element={<UserLogin />} />
 
         {/* ADMIN */}
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="create-user" element={<CreateEmployee />} />
-          <Route path="create-meeting" element={<CreateMeeting />} />
-          <Route path="/admin/dashboard" element={<Dashboard />} />
-          <Route path="/admin/invite-user" element={<InviteUser />} />
-          <Route path="/admin/employees" element={<Employees />} />
-          <Route
- path="/admin/meeting/:meetingId"
- element={<AdminVoiceRoom />}
-/>
+       <Route path="/admin" element={<AdminLayout />}>
+  <Route path="dashboard" element={<AdminDashboard />} />
+  <Route path="create-user" element={<CreateEmployee />} />
+  <Route path="create-meeting" element={<CreateMeeting />} />
+
+  {/* ❌ REMOVE this duplicate */}
+  {/* <Route path="/admin/dashboard" element={<Dashboard />} /> */}
+
+  <Route path="invite-user" element={<InviteUser />} />
+  <Route path="employees" element={<Employees />} />
+
+  <Route path="meeting/:meetingId" element={<AdminVoiceRoom />} />
+  <Route path="recordings" element={<AdminRecordings />} />
+
 
 
 <Route
@@ -67,14 +70,17 @@ function App() {
 
         {/* USER */}
         <Route path="/user" element={<UserLayout />}>
-          <Route path="dashboard" element={<UserDashboard />} />
-          <Route path="join-meeting" element={<JoinMeeting />} />
-          <Route path="meeting-room" element={<MeetingRoom />} />
-          <Route path="/user/meetings" element={<UserMeetings />} />
-          <Route path="/user/meeting/:meetingId" element={<UserVoiceRoom/>}/>
+  <Route path="dashboard" element={<UserDashboard />} />
+  <Route path="join-meeting" element={<JoinMeeting />} />
+  <Route path="meeting-room" element={<MeetingRoom />} />
+
+  {/* ❌ REMOVE leading slash */}
+  <Route path="meetings" element={<UserMeetings />} />
+  <Route path="meeting/:meetingId" element={<UserVoiceRoom />} />
+</Route>
 
   
-        </Route>
+     
 
       </Routes>
     </BrowserRouter>
