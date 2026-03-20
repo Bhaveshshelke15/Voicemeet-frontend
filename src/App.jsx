@@ -74,7 +74,7 @@ function App() {
           <Route path="/user/meeting/:meetingId" element={<UserVoiceRoom/>}/>
 
           <Route path="/index.html" element={<Navigate to="/" />} />
-<Route path="*" element={<Navigate to="/admin/login" />} />
+
 
   
         </Route>
