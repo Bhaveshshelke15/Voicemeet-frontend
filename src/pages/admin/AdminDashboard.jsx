@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../../api/api";
-import "../../styles/admindashboard.css";
+import "../../styles/adminDashboard.css";
 
 export default function Dashboard() {
 
