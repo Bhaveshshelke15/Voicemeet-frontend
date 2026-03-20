@@ -1,5 +1,5 @@
 //import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import AdminLogin from "./pages/admin/AdminLogin";
 import UserLogin from "./pages/user/UserLogin";
