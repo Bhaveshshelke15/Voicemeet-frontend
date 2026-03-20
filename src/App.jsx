@@ -77,6 +77,7 @@ function App() {
   {/* ❌ REMOVE leading slash */}
   <Route path="meetings" element={<UserMeetings />} />
   <Route path="meeting/:meetingId" element={<UserVoiceRoom />} />
+  <Route path="/index.html" element={<Navigate to="/" />} />
 </Route>
 
   
