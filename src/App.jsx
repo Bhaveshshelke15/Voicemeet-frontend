@@ -34,7 +34,7 @@ import AdminRecordings from "./pages/admin/AdminRecordings";
 
 function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
 
         {/* DEFAULT ROUTE */}
@@ -80,7 +80,7 @@ function App() {
         </Route>
 
       </Routes>
-    </BrowserRouter>
+   </HashRouter>
   );
 }
 
