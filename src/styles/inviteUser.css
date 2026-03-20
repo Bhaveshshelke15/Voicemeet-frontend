@@ -1,0 +1,44 @@
+.invite-page{
+  padding:30px;
+}
+
+.meeting-input{
+  margin-bottom:20px;
+}
+
+.meeting-input input{
+  padding:8px;
+  border-radius:6px;
+  border:1px solid #ccc;
+}
+
+.invite-table{
+  width:100%;
+  border-collapse:collapse;
+  background:white;
+  box-shadow:0 3px 10px rgba(0,0,0,0.05);
+}
+
+.invite-table th,
+.invite-table td{
+  padding:12px;
+  border-bottom:1px solid #eee;
+  text-align:left;
+}
+
+.invite-table th{
+  background:#f4f6f9;
+}
+
+.invite-btn{
+  background:#4f7cff;
+  color:white;
+  border:none;
+  padding:6px 12px;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+.invite-btn:hover{
+  background:#3c66e0;
+}

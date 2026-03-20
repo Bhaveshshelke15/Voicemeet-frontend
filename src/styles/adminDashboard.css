@@ -1,0 +1,244 @@
+body {
+  margin: 0;
+  font-family: Arial;
+  background: #f4f6f9;
+}
+
+.dashboard-container {
+  display: flex;
+  height: 100vh;
+}
+
+/* Sidebar */
+
+.sidebar {
+  width: 260px;
+  background: #1f2235;
+  color: white;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.logo {
+  margin-bottom: 20px;
+}
+
+.menu {
+  list-style: none;
+  padding: 0;
+}
+
+.menu li {
+  padding: 10px 0;
+  cursor: pointer;
+}
+
+.menu li.active {
+  font-weight: bold;
+}
+
+.chat-section {
+  margin-top: auto;
+}
+
+.chat-search {
+  width: 100%;
+  padding: 8px;
+  border-radius: 6px;
+  border: none;
+}
+
+.employee-list {
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+.employee-list p {
+  margin: 6px 0;
+}
+
+.chat-box {
+  background: #2a2e4a;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.message {
+  font-size: 12px;
+}
+
+.chat-input {
+  display: flex;
+  margin-top: 10px;
+}
+
+.chat-input input {
+  flex: 1;
+  padding: 6px;
+}
+
+.chat-input button {
+  background: #4f7cff;
+  border: none;
+  color: white;
+  padding: 6px 10px;
+}
+
+/* Main */
+
+.main {
+  flex: 1;
+  padding: 30px;
+}
+
+/* Topbar */
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.profile img {
+  border-radius: 50%;
+}
+
+/* Stats */
+
+.stats {
+  display: flex;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.card {
+  background: white;
+  flex: 1;
+  padding: 20px;
+  border-radius: 12px;
+}
+
+/* Middle */
+
+.middle {
+  display: flex;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.overview {
+  flex: 2;
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.meeting-input {
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+}
+
+.record-btn {
+  margin-top: 10px;
+  background: #4f7cff;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 8px;
+}
+
+.right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.server-card {
+  background: linear-gradient(135deg,#ffd43b,#ffcc00);
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.recorded-card {
+  background: #1f2a44;
+  color: white;
+  padding: 20px;
+  border-radius: 12px;
+}
+
+/* Responsive */
+
+@media (max-width:900px) {
+
+  .dashboard-container {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+  }
+
+  .stats {
+    flex-direction: column;
+  }
+
+  .middle {
+    flex-direction: column;
+  }
+
+}
+
+
+
+
+.meeting-list{
+margin-top:10px;
+max-height:150px;
+overflow-y:auto;
+}
+
+.meeting-item{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:6px 0;
+border-bottom:1px solid #eee;
+}
+
+.join-btn{
+background:#4CAF50;
+color:white;
+border:none;
+padding:5px 10px;
+border-radius:4px;
+cursor:pointer;
+}
+
+.join-btn:hover{
+background:#45a049;
+}
+
+
+
+
+
+.meeting-list{
+  max-height:200px;
+  overflow-y:auto;
+  margin-top:10px;
+}
+
+
+
+
+
+

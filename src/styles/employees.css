@@ -1,0 +1,36 @@
+.employees-page{
+  padding:30px;
+}
+
+.employees-header{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:20px;
+}
+
+.employees-header input{
+  padding:8px;
+  border-radius:6px;
+  border:1px solid #ccc;
+}
+
+.employees-table{
+  width:100%;
+  border-collapse:collapse;
+  background:white;
+  box-shadow:0 3px 10px rgba(0,0,0,0.05);
+}
+
+.employees-table th,
+.employees-table td{
+  padding:12px;
+  border-bottom:1px solid #eee;
+}
+
+.employees-table th{
+  background:#f4f6f9;
+}
+
+.employees-table tr:hover{
+  background:#fafafa;
+}

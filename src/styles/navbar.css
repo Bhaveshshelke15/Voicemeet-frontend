@@ -1,0 +1,23 @@
+.navbar{
+  height:60px;
+  background:white;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 20px;
+  box-shadow:0 2px 10px rgba(0,0,0,0.1);
+}
+
+.menu-btn{
+  display:none;
+}
+
+/* Mobile */
+
+@media (max-width:768px){
+
+  .menu-btn{
+    display:block;
+  }
+
+}

@@ -1,0 +1,33 @@
+.recording-container{
+ padding:40px;
+}
+
+.recording-table{
+ width:100%;
+ border-collapse:collapse;
+ margin-top:20px;
+}
+
+.recording-table th,
+.recording-table td{
+ padding:12px;
+ border-bottom:1px solid #ddd;
+ text-align:center;
+}
+
+.recording-table th{
+ background:#f5f5f5;
+}
+
+.download-btn{
+ background:#2196F3;
+ color:white;
+ padding:6px 12px;
+ border-radius:5px;
+ text-decoration:none;
+}
+
+.no-recordings{
+ margin-top:20px;
+ color:gray;
+}
