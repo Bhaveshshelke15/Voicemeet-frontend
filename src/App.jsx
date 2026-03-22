@@ -1,87 +1,72 @@
-//import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 
+// AUTH
 import AdminLogin from "./pages/admin/AdminLogin";
 import UserLogin from "./pages/user/UserLogin";
 
+// LAYOUTS
 import AdminLayout from "./layouts/AdminLayout";
 import UserLayout from "./layouts/UserLayout";
 
+// ADMIN PAGES
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import CreateEmployee from "./pages/admin/CreateEmployee";
 import CreateMeeting from "./pages/admin/CreateMeeting";
+import InviteUser from "./pages/admin/InviteUser";
+import Employees from "./pages/admin/Employees";
+import AdminVoiceRoom from "./pages/admin/AdminVoiceRoom";
+import AdminRecordings from "./pages/admin/AdminRecordings";
 
+// USER PAGES
 import UserDashboard from "./pages/user/Dashboard";
 import JoinMeeting from "./pages/user/JoinMeeting";
 import MeetingRoom from "./pages/user/MeetingRoom";
-import Dashboard from "./pages/admin/AdminDashboard";
-import InviteUser from "./pages/admin/InviteUser";
-import Employees from "./pages/admin/Employees";
 import UserMeetings from "./pages/user/UserMeetings";
-import AdminVoiceRoom from "./pages/admin/AdminVoiceRoom";
-
 import UserVoiceRoom from "./pages/user/UserVoiceRoom";
-
-import AdminRecordings from "./pages/admin/AdminRecordings";
-
-
-
-
-
-
-
-
-
 
 function App() {
   return (
     <HashRouter>
       <Routes>
 
-        {/* DEFAULT ROUTE */}
+        {/* DEFAULT */}
         <Route path="/" element={<Navigate to="/admin/login" />} />
 
         {/* LOGIN */}
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/user/login" element={<UserLogin />} />
 
-        {/* ADMIN */}
+        {/* ADMIN ROUTES */}
         <Route path="/admin" element={<AdminLayout />}>
+
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="create-user" element={<CreateEmployee />} />
           <Route path="create-meeting" element={<CreateMeeting />} />
-          <Route path="/admin/dashboard" element={<Dashboard />} />
-          <Route path="/admin/invite-user" element={<InviteUser />} />
-          <Route path="/admin/employees" element={<Employees />} />
-          <Route
- path="/admin/meeting/:meetingId"
- element={<AdminVoiceRoom />}
-/>
+          <Route path="invite-user" element={<InviteUser />} />
+          <Route path="employees" element={<Employees />} />
 
+          {/* 🔥 FIXED MEETING ROUTE */}
+          <Route path="meeting/:meetingId" element={<AdminVoiceRoom />} />
 
-<Route
- path="/admin/recordings"
- element={<AdminRecordings />}
-/>
-         
+          <Route path="recordings" element={<AdminRecordings />} />
+
         </Route>
 
-        {/* USER */}
+        {/* USER ROUTES */}
         <Route path="/user" element={<UserLayout />}>
+
           <Route path="dashboard" element={<UserDashboard />} />
           <Route path="join-meeting" element={<JoinMeeting />} />
           <Route path="meeting-room" element={<MeetingRoom />} />
-          <Route path="/user/meetings" element={<UserMeetings />} />
-          <Route path="/user/meeting/:meetingId" element={<UserVoiceRoom/>}/>
+          <Route path="meetings" element={<UserMeetings />} />
 
-      
+          {/* 🔥 FIXED MEETING ROUTE */}
+          <Route path="meeting/:meetingId" element={<UserVoiceRoom />} />
 
-
-  
         </Route>
 
       </Routes>
-   </HashRouter>
+    </HashRouter>
   );
 }
 
