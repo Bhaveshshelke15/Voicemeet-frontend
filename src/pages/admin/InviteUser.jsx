@@ -2,41 +2,63 @@ import { useEffect, useState } from "react";
 import API from "../../api/api";
 import "../../styles/inviteUser.css";
 
-export default function InviteUser(){
+export default function InviteUser() {
 
-  const [users,setUsers] = useState([]);
-  const [meetingId,setMeetingId] = useState("");
+  const [users, setUsers] = useState([]);
+  const [meetings, setMeetings] = useState([]);
+  const [meetingId, setMeetingId] = useState("");
 
-  useEffect(()=>{
+  useEffect(() => {
     fetchUsers();
-  },[]);
+    fetchMeetings();
+  }, []);
 
-  const fetchUsers = async()=>{
-
-    try{
-
+  // ✅ Fetch all users
+  const fetchUsers = async () => {
+    try {
       const token = localStorage.getItem("token");
 
-      const res = await API.get("/admin/users",{
-        headers:{
-          Authorization:"Bearer "+token
+      const res = await API.get("/admin/users", {
+        headers: {
+          Authorization: "Bearer " + token
         }
       });
 
       setUsers(res.data);
 
-    }catch(err){
-      console.error(err);
+    } catch (err) {
+      console.error("Error fetching users:", err);
     }
-
   };
 
+  // ✅ Fetch all meetings (IMPORTANT)
+  const fetchMeetings = async () => {
+    try {
+      const token = localStorage.getItem("token");
 
-  const inviteUser = async(userId)=>{
+      const res = await API.get("/meeting/all", {
+        headers: {
+          Authorization: "Bearer " + token
+        }
+      });
 
-    const token = localStorage.getItem("token");
+      setMeetings(res.data);
 
-    try{
+    } catch (err) {
+      console.error("Error fetching meetings:", err);
+    }
+  };
+
+  // ✅ Invite user
+  const inviteUser = async (userId) => {
+
+    if (!meetingId) {
+      alert("Please select a meeting first");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
 
       await API.post(
         "/meeting/invite",
@@ -45,56 +67,61 @@ export default function InviteUser(){
           userId: userId
         },
         {
-          headers:{
-            Authorization:"Bearer "+token
+          headers: {
+            Authorization: "Bearer " + token
           }
         }
       );
 
       alert("Invitation sent to " + userId);
 
-    }catch(err){
-      console.error(err);
+    } catch (err) {
+      console.error("Invite error:", err);
       alert("Failed to invite user");
     }
-
   };
 
-
-  return(
+  return (
 
     <div className="invite-page">
 
       <h2>Invite Employees To Meeting</h2>
 
+      {/* ✅ Meeting Dropdown */}
       <div className="meeting-input">
 
-        <label>Meeting Code</label>
+        <label>Select Meeting</label>
 
-        <input
-          type="text"
-          placeholder="Enter Meeting ID or Code"
+        <select
           value={meetingId}
-          onChange={(e)=>setMeetingId(e.target.value)}
-        />
+          onChange={(e) => setMeetingId(e.target.value)}
+        >
+          <option value="">-- Select Meeting --</option>
+
+          {meetings.map((m) => (
+            <option key={m.meetingId} value={m.meetingId}>
+              {m.meetingName}
+            </option>
+          ))}
+
+        </select>
 
       </div>
 
+      {/* ✅ Users Table */}
       <table className="invite-table">
 
         <thead>
-
           <tr>
             <th>User ID</th>
             <th>Name</th>
             <th>Action</th>
           </tr>
-
         </thead>
 
         <tbody>
 
-          {users.map((user)=>(
+          {users.map((user) => (
 
             <tr key={user.userId}>
 
@@ -105,7 +132,8 @@ export default function InviteUser(){
 
                 <button
                   className="invite-btn"
-                  onClick={()=>inviteUser(user.userId)}
+                  disabled={!meetingId}
+                  onClick={() => inviteUser(user.userId)}
                 >
                   Invite
                 </button>
@@ -123,5 +151,4 @@ export default function InviteUser(){
     </div>
 
   );
-
 }
