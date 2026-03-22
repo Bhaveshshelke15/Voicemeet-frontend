@@ -2,181 +2,331 @@ import React, { useEffect, useRef, useState } from "react";
 import SockJS from "sockjs-client";
 import { Client } from "@stomp/stompjs";
 import { useParams } from "react-router-dom";
+import "../../styles/voiceRoom.css";
 
 function AdminVoiceRoom() {
 
-  const { meetingId } = useParams();
+const { meetingId } = useParams();
 
-  const stompClient = useRef(null);
-  const localStream = useRef(null);
-  const peerConnections = useRef({});
+const stompClient = useRef(null);
+const localStream = useRef(null);
+const peerConnections = useRef({});
 
-  const configuration = {
-    iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
-  };
+const configuration = {
+ iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+};
 
-  const [joined, setJoined] = useState(false);
+const [joined, setJoined] = useState(false);
+const [participants, setParticipants] = useState([]);
+const [activeUser, setActiveUser] = useState(null);
 
-  ////////////////////////////////////////////////////////
-  // SOCKET CONNECT
-  ////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////
+// SPEAKING DETECTION
+////////////////////////////////////////////////////////
 
-  useEffect(() => {
+function detectSpeaking(stream, userId) {
 
-    const socket = new SockJS("https://voicemeet.onrender.com/ws");
+ const audioContext = new AudioContext();
+ const analyser = audioContext.createAnalyser();
 
-    stompClient.current = new Client({
-      webSocketFactory: () => socket,
+ const microphone =
+  audioContext.createMediaStreamSource(stream);
 
-      onConnect: () => {
-        stompClient.current.subscribe(
-          "/topic/signal/" + meetingId,
-          handleSignal
-        );
-      }
-    });
+ microphone.connect(analyser);
 
-    stompClient.current.activate();
+ analyser.fftSize = 512;
 
-  }, [meetingId]);
+ const dataArray =
+  new Uint8Array(analyser.frequencyBinCount);
 
-  ////////////////////////////////////////////////////////
-  // JOIN
-  ////////////////////////////////////////////////////////
+ function checkVolume() {
 
-  const joinMeeting = async () => {
+  analyser.getByteFrequencyData(dataArray);
 
-    localStream.current = await navigator.mediaDevices.getUserMedia({
-      audio: true
-    });
+  let volume =
+   dataArray.reduce((a, b) => a + b) / dataArray.length;
 
-    stompClient.current.publish({
-      destination: "/app/signal",
-      body: JSON.stringify({
-        type: "join",
-        meetingId,
-        sender: "admin"
-      })
-    });
+  if (volume > 20) {
+   setActiveUser(userId);
+  }
 
-    setJoined(true);
-  };
+  requestAnimationFrame(checkVolume);
+ }
 
-  ////////////////////////////////////////////////////////
-  // HANDLE SIGNAL
-  ////////////////////////////////////////////////////////
+ checkVolume();
+}
 
-  const handleSignal = async (message) => {
+////////////////////////////////////////////////////////
+// CONNECT SOCKET
+////////////////////////////////////////////////////////
 
-    const data = JSON.parse(message.body);
+useEffect(() => {
 
-    // 🔥 IMPORTANT FILTER
-    if (data.target && data.target !== "admin") return;
+ const socket = new SockJS("https://voicemeet.onrender.com/ws");
 
-    if (data.sender === "admin") return;
+ stompClient.current = new Client({
 
-    if (data.type === "join") {
+  webSocketFactory: () => socket,
 
-      createConnection(data.sender);
-    }
+  onConnect: () => {
 
-    if (data.type === "answer") {
+   stompClient.current.subscribe(
+    "/topic/signal/" + meetingId,
+    handleSignal
+   );
 
-      const pc = peerConnections.current[data.sender];
+  }
 
-      if (pc) {
-        await pc.setRemoteDescription(
-          new RTCSessionDescription(data.answer)
-        );
-      }
-    }
+ });
 
-    if (data.type === "candidate") {
+ stompClient.current.activate();
 
-      const pc = peerConnections.current[data.sender];
+}, [meetingId]);
 
-      if (pc) {
-        await pc.addIceCandidate(
-          new RTCIceCandidate(data.candidate)
-        );
-      }
-    }
-  };
+////////////////////////////////////////////////////////
+// JOIN MEETING
+////////////////////////////////////////////////////////
 
-  ////////////////////////////////////////////////////////
-  // CREATE CONNECTION
-  ////////////////////////////////////////////////////////
+const joinMeeting = async () => {
 
-  const createConnection = async (userId) => {
+ localStream.current =
+  await navigator.mediaDevices.getUserMedia({
+   audio: true
+  });
 
-    const pc = new RTCPeerConnection(configuration);
+ setParticipants(["admin"]);
 
-    peerConnections.current[userId] = pc;
+ stompClient.current.publish({
 
-    localStream.current.getTracks().forEach(track => {
-      pc.addTrack(track, localStream.current);
-    });
+  destination: "/app/signal",
 
-    pc.ontrack = (event) => {
+  body: JSON.stringify({
 
-      const audio = new Audio();
-      audio.srcObject = event.streams[0];
-      audio.autoplay = true;
+   type: "join",
+   meetingId,
+   sender: "admin"
 
-      audio.play().catch(() => {
-        console.log("Autoplay blocked");
-      });
-    };
+  })
 
-    pc.onicecandidate = (event) => {
+ });
 
-      if (event.candidate) {
-        stompClient.current.publish({
-          destination: "/app/signal",
-          body: JSON.stringify({
-            type: "candidate",
-            meetingId,
-            sender: "admin",
-            target: userId,
-            candidate: event.candidate
-          })
-        });
-      }
-    };
+ setJoined(true);
+};
 
-    // 🔥 CREATE OFFER
-    const offer = await pc.createOffer();
+////////////////////////////////////////////////////////
+// HANDLE SIGNAL
+////////////////////////////////////////////////////////
 
-    await pc.setLocalDescription(offer);
+const handleSignal = async (message) => {
 
-    stompClient.current.publish({
-      destination: "/app/signal",
-      body: JSON.stringify({
-        type: "offer",
-        meetingId,
-        sender: "admin",
-        target: userId,
-        offer
-      })
-    });
-  };
+ const data = JSON.parse(message.body);
 
-  ////////////////////////////////////////////////////////
-  // UI
-  ////////////////////////////////////////////////////////
+ if (data.sender === "admin") return;
 
-  return (
-    <div style={{ padding: "20px" }}>
-      <h2>Admin Voice Room</h2>
-      <p>Meeting ID: {meetingId}</p>
+ if (data.type === "join") {
 
-      {!joined ? (
-        <button onClick={joinMeeting}>Start Meeting</button>
-      ) : (
-        <p>Meeting Live 🎤</p>
-      )}
-    </div>
-  );
+  setParticipants(prev => {
+
+   if (!prev.includes(data.sender)) {
+    return [...prev, data.sender];
+   }
+   return prev;
+
+  });
+
+  createConnection(data.sender);
+
+ }
+
+ if (data.type === "answer") {
+
+  const pc = peerConnections.current[data.sender];
+
+  if (pc) {
+
+   await pc.setRemoteDescription(
+    new RTCSessionDescription(data.answer)
+   );
+
+  }
+
+ }
+
+ if (data.type === "candidate") {
+
+  const pc = peerConnections.current[data.sender];
+
+  if (pc) {
+
+   await pc.addIceCandidate(
+    new RTCIceCandidate(data.candidate)
+   );
+
+  }
+
+ }
+
+};
+
+////////////////////////////////////////////////////////
+// CREATE WEBRTC CONNECTION
+////////////////////////////////////////////////////////
+
+const createConnection = async (userId) => {
+
+ const pc = new RTCPeerConnection(configuration);
+
+ peerConnections.current[userId] = pc;
+
+ localStream.current.getTracks().forEach(track => {
+  pc.addTrack(track, localStream.current);
+ });
+
+ pc.ontrack = (event) => {
+
+  const userStream = event.streams[0];
+
+  const audio = new Audio();
+  audio.srcObject = userStream;
+  audio.play();
+
+  detectSpeaking(userStream, userId);
+
+ };
+
+ pc.onicecandidate = (event) => {
+
+  if (event.candidate) {
+
+   stompClient.current.publish({
+
+    destination: "/app/signal",
+
+    body: JSON.stringify({
+
+     type: "candidate",
+     meetingId,
+     sender: "admin",
+     target: userId,
+     candidate: event.candidate
+
+    })
+
+   });
+
+  }
+
+ };
+
+ const offer = await pc.createOffer();
+
+ await pc.setLocalDescription(offer);
+
+ stompClient.current.publish({
+
+  destination: "/app/signal",
+
+  body: JSON.stringify({
+
+   type: "offer",
+   meetingId,
+   sender: "admin",
+   target: userId,
+   offer
+
+  })
+
+ });
+
+};
+
+////////////////////////////////////////////////////////
+// LEAVE MEETING
+////////////////////////////////////////////////////////
+
+const leaveMeeting = () => {
+
+ Object.values(peerConnections.current).forEach(pc => {
+  pc.close();
+ });
+
+ peerConnections.current = {};
+
+ if (localStream.current) {
+  localStream.current.getTracks().forEach(track => track.stop());
+ }
+
+ setJoined(false);
+ setParticipants([]);
+};
+
+////////////////////////////////////////////////////////
+// UI
+////////////////////////////////////////////////////////
+
+return (
+
+<div className="voice-container">
+
+<h2>Admin Voice Room</h2>
+<p>Meeting ID : {meetingId}</p>
+
+{!joined ?
+
+<button className="join-btn" onClick={joinMeeting}>
+Join Meeting
+</button>
+
+:
+
+<>
+<h3>Participants</h3>
+
+<div className="participants-grid">
+
+{participants.map((p) => (
+
+<div
+key={p}
+className={
+ activeUser === p
+  ? "participant active"
+  : "participant"
+}
+>
+
+<div className="avatar">
+{p.charAt(0).toUpperCase()}
+</div>
+
+<p>{p}</p>
+
+</div>
+
+))}
+
+</div>
+
+<div className="controls">
+
+<button className="mute-btn">
+🎤 Mute
+</button>
+
+<button className="leave-btn" onClick={leaveMeeting}>
+📞 Leave
+</button>
+
+</div>
+
+</>
+
+}
+
+</div>
+
+);
+
 }
 
 export default AdminVoiceRoom;
