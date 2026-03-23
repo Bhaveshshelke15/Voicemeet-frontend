@@ -10,14 +10,20 @@ function UserVoiceRoom() {
   const stompClient = useRef(null);
   const localStream = useRef(null);
   const peerConnection = useRef(null);
+  const audioRef = useRef(null);
 
   const userId = localStorage.getItem("userId") || "user";
 
   const configuration = {
-    iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+    iceServers: [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" }
+    ]
   };
 
   const [joined, setJoined] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [speakerOn, setSpeakerOn] = useState(true);
 
   ////////////////////////////////////////////////////////
   // SOCKET CONNECT
@@ -72,9 +78,8 @@ function UserVoiceRoom() {
 
     const data = JSON.parse(message.body);
 
-    // 🔥 IMPORTANT FILTER
+    // 🔥 FILTER
     if (data.target && data.target !== userId) return;
-
     if (data.sender === userId) return;
 
     if (data.type === "offer") {
@@ -123,11 +128,19 @@ function UserVoiceRoom() {
       peerConnection.current.addTrack(track, localStream.current);
     });
 
+    // 🔥 FIXED AUDIO
     peerConnection.current.ontrack = (event) => {
 
-      const audio = new Audio();
+      const audio = document.createElement("audio");
+
       audio.srcObject = event.streams[0];
       audio.autoplay = true;
+      audio.playsInline = true;
+      audio.muted = !speakerOn;
+
+      document.body.appendChild(audio);
+
+      audioRef.current = audio;
 
       audio.play().catch(() => {
         console.log("Autoplay blocked");
@@ -152,19 +165,82 @@ function UserVoiceRoom() {
   };
 
   ////////////////////////////////////////////////////////
+  // CONTROLS
+  ////////////////////////////////////////////////////////
+
+  const toggleMute = () => {
+    localStream.current.getAudioTracks().forEach(track => {
+      track.enabled = !track.enabled;
+    });
+    setIsMuted(!isMuted);
+  };
+
+  const toggleSpeaker = () => {
+    if (audioRef.current) {
+      audioRef.current.muted = speakerOn;
+    }
+    setSpeakerOn(!speakerOn);
+  };
+
+  ////////////////////////////////////////////////////////
+  // LEAVE
+  ////////////////////////////////////////////////////////
+
+  const leaveMeeting = () => {
+
+    if (peerConnection.current) {
+      peerConnection.current.close();
+    }
+
+    if (audioRef.current) {
+      audioRef.current.remove();
+    }
+
+    if (localStream.current) {
+      localStream.current.getTracks().forEach(track => track.stop());
+    }
+
+    setJoined(false);
+  };
+
+  ////////////////////////////////////////////////////////
   // UI
   ////////////////////////////////////////////////////////
 
   return (
     <div style={{ padding: "20px" }}>
+
       <h2>User Voice Room</h2>
       <p>Meeting ID: {meetingId}</p>
 
       {!joined ? (
+
         <button onClick={joinMeeting}>Join</button>
+
       ) : (
-        <p>Connected 🎤</p>
+
+        <>
+          <p>Connected 🎤</p>
+
+          <div style={{ marginTop: "20px" }}>
+
+            <button onClick={toggleMute}>
+              {isMuted ? "🔇 Unmute" : "🎤 Mute"}
+            </button>
+
+            <button onClick={toggleSpeaker}>
+              {speakerOn ? "🔊 Speaker Off" : "🔊 Speaker On"}
+            </button>
+
+            <button onClick={leaveMeeting}>
+              📞 Leave
+            </button>
+
+          </div>
+        </>
+
       )}
+
     </div>
   );
 }
