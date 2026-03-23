@@ -12,7 +12,7 @@ function AdminVoiceRoom() {
   const localStream = useRef(null);
   const peerConnections = useRef({});
   const audioElements = useRef({});
-  const iceQueues = useRef({}); // 🔥 FIX
+  const iceQueues = useRef({});
 
   const [joined, setJoined] = useState(false);
   const [participants, setParticipants] = useState([]);
@@ -84,26 +84,38 @@ function AdminVoiceRoom() {
     if (data.target && data.target !== "admin") return;
     if (data.sender === "admin") return;
 
+    ////////////////////////////////////////////////////////
+    // USER JOINED
+    ////////////////////////////////////////////////////////
     if (data.type === "join") {
 
       setParticipants(prev =>
         prev.includes(data.sender) ? prev : [...prev, data.sender]
       );
 
-      createConnection(data.sender);
+      // 🔥 PREVENT DUPLICATE CONNECTION
+      if (!peerConnections.current[data.sender]) {
+        createConnection(data.sender);
+      }
     }
 
+    ////////////////////////////////////////////////////////
+    // ANSWER
+    ////////////////////////////////////////////////////////
     if (data.type === "answer") {
 
       const pc = peerConnections.current[data.sender];
 
-      if (pc) {
+      if (pc && pc.signalingState !== "stable") {
+        try {
+          await pc.setRemoteDescription(
+            new RTCSessionDescription(data.answer)
+          );
+        } catch (e) {
+          console.warn("setRemoteDescription error:", e);
+        }
 
-        await pc.setRemoteDescription(
-          new RTCSessionDescription(data.answer)
-        );
-
-        // 🔥 APPLY QUEUED ICE
+        // 🔥 APPLY ICE QUEUE
         if (iceQueues.current[data.sender]) {
           iceQueues.current[data.sender].forEach(c =>
             pc.addIceCandidate(c)
@@ -113,15 +125,21 @@ function AdminVoiceRoom() {
       }
     }
 
+    ////////////////////////////////////////////////////////
+    // ICE
+    ////////////////////////////////////////////////////////
     if (data.type === "candidate") {
 
       const pc = peerConnections.current[data.sender];
       const candidate = new RTCIceCandidate(data.candidate);
 
       if (pc && pc.remoteDescription) {
-        await pc.addIceCandidate(candidate);
+        try {
+          await pc.addIceCandidate(candidate);
+        } catch (e) {
+          console.warn("ICE error:", e);
+        }
       } else {
-        // 🔥 STORE ICE
         if (!iceQueues.current[data.sender]) {
           iceQueues.current[data.sender] = [];
         }
@@ -139,11 +157,14 @@ function AdminVoiceRoom() {
     const pc = new RTCPeerConnection(configuration);
     peerConnections.current[userId] = pc;
 
+    // 🔥 ADD LOCAL AUDIO
     localStream.current.getTracks().forEach(track => {
       pc.addTrack(track, localStream.current);
     });
 
-    // 🔥 AUDIO FIX
+    ////////////////////////////////////////////////////////
+    // RECEIVE AUDIO
+    ////////////////////////////////////////////////////////
     pc.ontrack = (event) => {
 
       if (!audioElements.current[userId]) {
@@ -151,17 +172,24 @@ function AdminVoiceRoom() {
         const audio = document.createElement("audio");
         audio.autoplay = true;
         audio.playsInline = true;
-        document.body.appendChild(audio);
 
+        document.body.appendChild(audio);
         audioElements.current[userId] = audio;
       }
 
-      audioElements.current[userId].srcObject = event.streams[0];
-      audioElements.current[userId].muted = !speakerOn;
+      const audio = audioElements.current[userId];
 
-      audioElements.current[userId].play().catch(() => {});
+      audio.srcObject = event.streams[0];
+      audio.muted = !speakerOn;
+
+      audio.play().catch(() => {
+        console.log("Autoplay blocked");
+      });
     };
 
+    ////////////////////////////////////////////////////////
+    // ICE SEND
+    ////////////////////////////////////////////////////////
     pc.onicecandidate = (event) => {
 
       if (event.candidate) {
@@ -179,7 +207,9 @@ function AdminVoiceRoom() {
       }
     };
 
-    // 🔥 OFFER
+    ////////////////////////////////////////////////////////
+    // CREATE OFFER
+    ////////////////////////////////////////////////////////
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
