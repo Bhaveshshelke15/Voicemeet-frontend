@@ -4,101 +4,100 @@ import "../../styles/adminRecordings.css";
 
 function AdminRecordings() {
 
-const [recordings, setRecordings] = useState([]);
+  const [recordings, setRecordings] = useState([]);
 
-useEffect(() => {
+  useEffect(() => {
+    fetchRecordings();
+  }, []);
 
- fetchRecordings();
+  const fetchRecordings = async () => {
+    try {
 
-}, []);
+      const res = await API.get("/recording/all");
+      console.log("Recordings:", res.data);
+      setRecordings(res.data);
 
-const fetchRecordings = async () => {
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
- try {
+  // ✅ FIXED URL
+  const getAudioUrl = (fileName) => {
+    return `https://voicemeet.onrender.com/recording/file/${fileName}`;
+  };
 
-  const res = await API.get("/recording/all");
-  setRecordings(res.data);
+  return (
 
- } catch (err) {
-  console.error(err);
- }
+    <div className="recording-container">
 
-};
+      <h2>Meeting Recordings</h2>
 
-return (
+      {recordings.length === 0 ? (
 
-<div className="recording-container">
+        <p className="no-recordings">
+          No recordings available
+        </p>
 
-<h2>Meeting Recordings</h2>
+      ) : (
 
-{recordings.length === 0 ? (
+        <table className="recording-table">
 
-<p className="no-recordings">
-No recordings available
-</p>
+          <thead>
+            <tr>
+              <th>Meeting ID</th>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Play</th>
+              <th>Download</th>
+            </tr>
+          </thead>
 
-) : (
+          <tbody>
 
-<table className="recording-table">
+            {recordings.map((r) => (
 
-<thead>
-<tr>
-<th>Meeting Name</th>
-<th>Meeting ID</th>
-<th>Date</th>
-<th>Time</th>
-<th>Play</th>
-<th>Download</th>
-</tr>
-</thead>
+              <tr key={r.id}>
 
-<tbody>
+                <td>{r.meetingId}</td>
+                <td>{r.date}</td>
+                <td>{r.time}</td>
 
-{recordings.map((r) => (
+                {/* ✅ PLAY */}
+                <td>
+                  <audio controls style={{ width: "200px" }}>
+                    <source
+                      src={getAudioUrl(r.fileName)}
+                      type="audio/webm"
+                    />
+                    Your browser does not support audio
+                  </audio>
+                </td>
 
-<tr key={r.id}>
+                {/* ✅ DOWNLOAD */}
+                <td>
+                  <a
+                    href={getAudioUrl(r.fileName)}
+                    download
+                    className="download-btn"
+                  >
+                    ⬇ Download
+                  </a>
+                </td>
 
-<td>{r.meetingName}</td>
-<td>{r.meetingId}</td>
-<td>{r.date}</td>
-<td>{r.time}</td>
+              </tr>
 
-<td>
+            ))}
 
-<audio controls>
-<source
-src={"https://voicemeet.onrender.com/recordings/" + r.fileName}
-type="audio/webm"
-/>
-</audio>
+          </tbody>
 
-</td>
+        </table>
 
-<td>
+      )}
 
-<a
-href={"https://voicemeet.onrender.com/recordings/" + r.fileName}
-download
-className="download-btn"
->
-Download
-</a>
+    </div>
 
-</td>
-
-</tr>
-
-))}
-
-</tbody>
-
-</table>
-
-)}
-
-</div>
-
-);
+  );
 
 }
 

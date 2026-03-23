@@ -14,6 +14,10 @@ function AdminVoiceRoom() {
   const audioElements = useRef({});
   const iceQueues = useRef({});
 
+  // 🔥 RECORDING
+  const mediaRecorder = useRef(null);
+  const recordedChunks = useRef([]);
+
   const [joined, setJoined] = useState(false);
   const [participants, setParticipants] = useState([]);
   const [isMuted, setIsMuted] = useState(false);
@@ -61,6 +65,12 @@ function AdminVoiceRoom() {
 
     setParticipants(["admin"]);
 
+    ////////////////////////////////////////////////////////
+    // 🔥 START RECORDING (ADMIN MIC FIRST)
+    ////////////////////////////////////////////////////////
+
+    startRecording();
+
     stompClient.current.publish({
       destination: "/app/signal",
       body: JSON.stringify({
@@ -74,6 +84,30 @@ function AdminVoiceRoom() {
   };
 
   ////////////////////////////////////////////////////////
+  // 🔥 START RECORDING FUNCTION
+  ////////////////////////////////////////////////////////
+
+  const startRecording = () => {
+
+    const combinedStream = new MediaStream();
+
+    // add admin audio
+    localStream.current.getTracks().forEach(track => {
+      combinedStream.addTrack(track);
+    });
+
+    mediaRecorder.current = new MediaRecorder(combinedStream);
+
+    mediaRecorder.current.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        recordedChunks.current.push(event.data);
+      }
+    };
+
+    mediaRecorder.current.start();
+  };
+
+  ////////////////////////////////////////////////////////
   // SIGNAL
   ////////////////////////////////////////////////////////
 
@@ -84,24 +118,17 @@ function AdminVoiceRoom() {
     if (data.target && data.target !== "admin") return;
     if (data.sender === "admin") return;
 
-    ////////////////////////////////////////////////////////
-    // USER JOINED
-    ////////////////////////////////////////////////////////
     if (data.type === "join") {
 
       setParticipants(prev =>
         prev.includes(data.sender) ? prev : [...prev, data.sender]
       );
 
-      // 🔥 PREVENT DUPLICATE CONNECTION
       if (!peerConnections.current[data.sender]) {
         createConnection(data.sender);
       }
     }
 
-    ////////////////////////////////////////////////////////
-    // ANSWER
-    ////////////////////////////////////////////////////////
     if (data.type === "answer") {
 
       const pc = peerConnections.current[data.sender];
@@ -112,10 +139,9 @@ function AdminVoiceRoom() {
             new RTCSessionDescription(data.answer)
           );
         } catch (e) {
-          console.warn("setRemoteDescription error:", e);
+          console.warn(e);
         }
 
-        // 🔥 APPLY ICE QUEUE
         if (iceQueues.current[data.sender]) {
           iceQueues.current[data.sender].forEach(c =>
             pc.addIceCandidate(c)
@@ -125,9 +151,6 @@ function AdminVoiceRoom() {
       }
     }
 
-    ////////////////////////////////////////////////////////
-    // ICE
-    ////////////////////////////////////////////////////////
     if (data.type === "candidate") {
 
       const pc = peerConnections.current[data.sender];
@@ -136,9 +159,7 @@ function AdminVoiceRoom() {
       if (pc && pc.remoteDescription) {
         try {
           await pc.addIceCandidate(candidate);
-        } catch (e) {
-          console.warn("ICE error:", e);
-        }
+        } catch (e) {}
       } else {
         if (!iceQueues.current[data.sender]) {
           iceQueues.current[data.sender] = [];
@@ -157,7 +178,6 @@ function AdminVoiceRoom() {
     const pc = new RTCPeerConnection(configuration);
     peerConnections.current[userId] = pc;
 
-    // 🔥 ADD LOCAL AUDIO
     localStream.current.getTracks().forEach(track => {
       pc.addTrack(track, localStream.current);
     });
@@ -165,6 +185,7 @@ function AdminVoiceRoom() {
     ////////////////////////////////////////////////////////
     // RECEIVE AUDIO
     ////////////////////////////////////////////////////////
+
     pc.ontrack = (event) => {
 
       if (!audioElements.current[userId]) {
@@ -178,18 +199,24 @@ function AdminVoiceRoom() {
       }
 
       const audio = audioElements.current[userId];
-
       audio.srcObject = event.streams[0];
       audio.muted = !speakerOn;
 
-      audio.play().catch(() => {
-        console.log("Autoplay blocked");
-      });
+      audio.play().catch(() => {});
+
+      ////////////////////////////////////////////////////////
+      // 🔥 ADD REMOTE AUDIO TO RECORDING
+      ////////////////////////////////////////////////////////
+
+      if (mediaRecorder.current) {
+        event.streams[0].getTracks().forEach(track => {
+          try {
+            mediaRecorder.current.stream.addTrack(track);
+          } catch (e) {}
+        });
+      }
     };
 
-    ////////////////////////////////////////////////////////
-    // ICE SEND
-    ////////////////////////////////////////////////////////
     pc.onicecandidate = (event) => {
 
       if (event.candidate) {
@@ -207,9 +234,6 @@ function AdminVoiceRoom() {
       }
     };
 
-    ////////////////////////////////////////////////////////
-    // CREATE OFFER
-    ////////////////////////////////////////////////////////
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
@@ -244,10 +268,41 @@ function AdminVoiceRoom() {
   };
 
   ////////////////////////////////////////////////////////
-  // LEAVE
+  // LEAVE (STOP RECORDING + UPLOAD)
   ////////////////////////////////////////////////////////
 
   const leaveMeeting = () => {
+
+    if (mediaRecorder.current) {
+
+      mediaRecorder.current.stop();
+
+      mediaRecorder.current.onstop = async () => {
+
+        const blob = new Blob(recordedChunks.current, {
+          type: "audio/webm"
+        });
+
+        const formData = new FormData();
+        formData.append("file", blob, "recording.webm");
+        formData.append("meetingId", meetingId);
+
+        try {
+
+          await fetch("https://voicemeet.onrender.com/recording/upload", {
+            method: "POST",
+            body: formData
+          });
+
+          console.log("Recording uploaded");
+
+        } catch (err) {
+          console.error("Upload failed", err);
+        }
+
+        recordedChunks.current = [];
+      };
+    }
 
     Object.values(peerConnections.current).forEach(pc => pc.close());
     peerConnections.current = {};
