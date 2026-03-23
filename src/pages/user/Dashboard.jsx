@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom"; // ✅ IMPORT ADDED
 import "../../styles/userDashboard.css";
 
 export default function Dashboard() {
@@ -8,6 +9,8 @@ export default function Dashboard() {
 
   const userId = localStorage.getItem("userId");
   const token = localStorage.getItem("token");
+
+  const navigate = useNavigate(); // ✅ INIT NAVIGATE
 
   useEffect(() => {
 
@@ -23,7 +26,7 @@ export default function Dashboard() {
           }
         );
 
-        console.log("Meetings:", res.data); // ✅ debug
+        console.log("Meetings:", res.data);
         setMeetings(res.data);
 
       } catch (err) {
@@ -31,15 +34,16 @@ export default function Dashboard() {
       }
     };
 
-    fetchMeetings();
+    if (userId && token) {
+      fetchMeetings();
+    }
 
   }, [userId, token]);
 
-
+  // ✅ FIXED FUNCTION
   const joinMeeting = (meetingId) => {
-    window.location.href = "/user/meeting/" + meetingId;
+    navigate("/user/meeting/" + meetingId);
   };
-
 
   return (
 
