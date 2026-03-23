@@ -5,216 +5,317 @@ import axios from "axios";
 
 function ChatBox({ currentUser }) {
 
-const [users, setUsers] = useState([]);
-const [selectedUser, setSelectedUser] = useState(null);
-const [messages, setMessages] = useState([]);
-const [text, setText] = useState("");
+  const [users, setUsers] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [text, setText] = useState("");
+  const [typingUser, setTypingUser] = useState(null);
 
-const stompClient = useRef(null);
+  const stompClient = useRef(null);
+  const messageEndRef = useRef(null);
 
-//////////////////////////////////////////////////
-// CONNECT WEBSOCKET
-//////////////////////////////////////////////////
+  //////////////////////////////////////////////////
+  // AUTO SCROLL
+  //////////////////////////////////////////////////
 
-useEffect(() => {
+  useEffect(() => {
+    messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
- const socket = new SockJS("https://voicemeet.onrender.com/ws");
+  //////////////////////////////////////////////////
+  // CONNECT WEBSOCKET
+  //////////////////////////////////////////////////
 
- stompClient.current = new Client({
+  useEffect(() => {
 
-  webSocketFactory: () => socket,
+    const socket = new SockJS("https://voicemeet.onrender.com/ws");
 
-  onConnect: () => {
+    stompClient.current = new Client({
 
-   console.log("Connected to websocket");
+      webSocketFactory: () => socket,
+      reconnectDelay: 5000,
 
-   stompClient.current.subscribe(
-    "/topic/private/" + currentUser,
-    (msg) => {
+      onConnect: () => {
 
-     const message = JSON.parse(msg.body);
+        console.log("Connected to websocket");
 
-     setMessages(prev => [...prev, message]);
+        // ✅ RECEIVE MESSAGE
+        stompClient.current.subscribe(
+          "/topic/private/" + currentUser,
+          (msg) => {
+
+            const message = JSON.parse(msg.body);
+
+            if (
+              (message.sender === selectedUser && message.receiver === currentUser) ||
+              (message.sender === currentUser && message.receiver === selectedUser)
+            ) {
+              setMessages(prev => [...prev, message]);
+
+              // 🔔 Notification
+              if (message.sender !== currentUser) {
+                new Notification("New Message", {
+                  body: message.message
+                });
+              }
+
+              // ✅ SEND SEEN
+              sendSeen(message.sender);
+            }
+          }
+        );
+
+        // ✅ TYPING
+        stompClient.current.subscribe(
+          "/topic/typing/" + currentUser,
+          (msg) => {
+            const data = JSON.parse(msg.body);
+            if (data.sender === selectedUser) {
+              setTypingUser(data.sender);
+              setTimeout(() => setTypingUser(null), 2000);
+            }
+          }
+        );
+
+      }
+
+    });
+
+    stompClient.current.activate();
+
+    // 🔔 Notification permission
+    if (Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
+
+  }, [currentUser, selectedUser]);
+
+  //////////////////////////////////////////////////
+  // SEARCH USER
+  //////////////////////////////////////////////////
+
+  const searchUser = async (keyword) => {
+
+    if (!keyword.trim()) {
+      setUsers([]);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await axios.get(
+        "http://localhost:8080/admin/search-user?keyword=" + keyword,
+        {
+          headers: { Authorization: "Bearer " + token }
+        }
+      );
+
+      setUsers(res.data);
+
+    } catch (err) {
+      console.log(err);
+    }
+
+  };
+
+  //////////////////////////////////////////////////
+  // LOAD CHAT HISTORY
+  //////////////////////////////////////////////////
+
+  const loadChat = async (userId) => {
+
+    setSelectedUser(userId);
+
+    try {
+
+      const res = await axios.get(
+        `https://voicemeet.onrender.com/chat/history/${currentUser}/${userId}`
+      );
+
+      setMessages(res.data);
+
+    } catch (err) {
+      console.log(err);
+    }
+
+  };
+
+  //////////////////////////////////////////////////
+  // SEND MESSAGE
+  //////////////////////////////////////////////////
+
+  const sendMessage = async () => {
+
+    if (!text.trim() || !selectedUser) return;
+
+    const msg = {
+      sender: currentUser,
+      receiver: selectedUser,
+      message: text,
+      status: "SENT",
+      time: new Date().toLocaleTimeString()
+    };
+
+    try {
+
+      await axios.post(
+        "https://voicemeet.onrender.com/chat/send",
+        msg
+      );
+
+      if (stompClient.current?.connected) {
+        stompClient.current.publish({
+          destination: "/app/private-chat",
+          body: JSON.stringify(msg)
+        });
+      }
+
+      setMessages(prev => [...prev, msg]);
+      setText("");
+
+    } catch (err) {
+      console.error(err);
+    }
+
+  };
+
+  //////////////////////////////////////////////////
+  // TYPING
+  //////////////////////////////////////////////////
+
+  const sendTyping = () => {
+
+    if (stompClient.current?.connected && selectedUser) {
+
+      stompClient.current.publish({
+        destination: "/app/typing",
+        body: JSON.stringify({
+          sender: currentUser,
+          receiver: selectedUser
+        })
+      });
 
     }
-   );
 
-  }
+  };
 
- });
+  //////////////////////////////////////////////////
+  // SEEN ✔✔
+  //////////////////////////////////////////////////
 
- stompClient.current.activate();
+  const sendSeen = (sender) => {
 
-}, [currentUser]);
+    if (stompClient.current?.connected) {
 
-//////////////////////////////////////////////////
-// SEARCH USER
-//////////////////////////////////////////////////
+      stompClient.current.publish({
+        destination: "/app/seen",
+        body: JSON.stringify({
+          sender: currentUser,
+          receiver: sender
+        })
+      });
 
-const searchUser = async (keyword) => {
+    }
 
- if (!keyword.trim()) {
-  setUsers([]);
-  return;
- }
+  };
 
- try {
+  //////////////////////////////////////////////////
+  // UI
+  //////////////////////////////////////////////////
 
-  const token = localStorage.getItem("token");
+  return (
 
-const res = await axios.get(
-"http://localhost:8080/admin/search-user?keyword=" + keyword,
-{
- headers:{
-  Authorization: "Bearer " + token
- }
-});
+    <div className="chat-container" style={{ display: "flex", height: "400px" }}>
 
-  setUsers(res.data);
+      {/* LEFT SIDE */}
+      <div style={{ width: "30%", borderRight: "1px solid #ddd" }}>
 
- } catch (err) {
-  console.log(err);
- }
+        <input
+          placeholder="Search..."
+          onChange={(e) => searchUser(e.target.value)}
+        />
 
-};
+        {users.map(u => (
+          <div key={u.userId} onClick={() => loadChat(u.userId)}>
+            {u.name}
+          </div>
+        ))}
 
-//////////////////////////////////////////////////
-// LOAD CHAT HISTORY
-//////////////////////////////////////////////////
+      </div>
 
-const loadChat = async (userId) => {
+      {/* RIGHT SIDE */}
+      <div style={{ width: "70%", padding: "10px" }}>
 
- setSelectedUser(userId);
+        {selectedUser && (
+          <>
+            <h4>{selectedUser}</h4>
 
- try {
+            {/* MESSAGES */}
+            <div style={{ height: "250px", overflowY: "auto" }}>
 
-  const res = await axios.get(
-   `https://voicemeet.onrender.com/chat/history/${currentUser}/${userId}`
+              {messages.map((m, i) => (
+
+                <div
+                  key={i}
+                  style={{
+                    textAlign: m.sender === currentUser ? "right" : "left",
+                    margin: "5px"
+                  }}
+                >
+
+                  <span
+                    style={{
+                      background: m.sender === currentUser ? "#dcf8c6" : "#fff",
+                      padding: "8px",
+                      borderRadius: "10px",
+                      display: "inline-block"
+                    }}
+                  >
+                    {m.message}
+                    <br />
+
+                    <small>
+                      {m.time} {" "}
+                      {m.sender === currentUser &&
+                        (m.status === "SEEN" ? "✔✔" : "✔")}
+                    </small>
+
+                  </span>
+
+                </div>
+
+              ))}
+
+              {/* TYPING */}
+              {typingUser && (
+                <p>{typingUser} typing...</p>
+              )}
+
+              <div ref={messageEndRef}></div>
+
+            </div>
+
+            {/* INPUT */}
+            <input
+              value={text}
+              onChange={(e) => {
+                setText(e.target.value);
+                sendTyping();
+              }}
+              placeholder="Type message..."
+            />
+
+            <button onClick={sendMessage}>Send</button>
+
+          </>
+        )}
+
+      </div>
+
+    </div>
+
   );
-
-  setMessages(res.data);
-
- } catch (err) {
-  console.log(err);
- }
-
-};
-
-//////////////////////////////////////////////////
-// SEND MESSAGE
-//////////////////////////////////////////////////
-
-const sendMessage = () => {
-
- if (!text.trim()) return;
-
- const msg = {
-
-  sender: currentUser,
-  receiver: selectedUser,
-  message: text,
-  time: new Date().toLocaleTimeString()
-
- };
-
- stompClient.current.publish({
-
-  destination: "/app/private-chat",
-  body: JSON.stringify(msg)
-
- });
-
- setMessages(prev => [...prev, msg]);
-
- setText("");
-
-};
-
-//////////////////////////////////////////////////
-// UI
-//////////////////////////////////////////////////
-
-return (
-
-<div className="chat-container">
-
-{/* SEARCH */}
-
-<input
- placeholder="Search employee..."
- onChange={(e) => searchUser(e.target.value)}
-/>
-
-{/* USER LIST */}
-
-<div className="user-list">
-
-{users.map((u) => (
-
-<div
- key={u.userId}
- onClick={() => loadChat(u.userId)}
- style={{
-  cursor: "pointer",
-  padding: "5px",
-  borderBottom: "1px solid #ddd"
- }}
->
-
-{u.name} ({u.userId})
-
-</div>
-
-))}
-
-</div>
-
-{/* CHAT WINDOW */}
-
-{selectedUser && (
-
-<div className="chat-window">
-
-<h4>Chat with {selectedUser}</h4>
-
-<div
- className="messages"
- style={{
-  height: "200px",
-  overflowY: "auto",
-  border: "1px solid #ddd",
-  marginBottom: "10px",
-  padding: "5px"
- }}
->
-
-{messages.map((m, i) => (
-
-<p key={i}>
-<b>{m.sender}:</b> {m.message}
-</p>
-
-))}
-
-</div>
-
-<input
- value={text}
- onChange={(e) => setText(e.target.value)}
- placeholder="Type message..."
-/>
-
-<button onClick={sendMessage}>
-Send
-</button>
-
-</div>
-
-)}
-
-</div>
-
-);
 
 }
 

@@ -12,19 +12,17 @@ function AdminRecordings() {
 
   const fetchRecordings = async () => {
     try {
-
       const res = await API.get("/recording/all");
       console.log("Recordings:", res.data);
       setRecordings(res.data);
-
     } catch (err) {
       console.error(err);
     }
   };
 
-  // ✅ FIXED URL
+  // ✅ FIXED CORRECT ENDPOINT
   const getAudioUrl = (fileName) => {
-    return `https://voicemeet.onrender.com/recording/file/${fileName}`;
+    return `https://voicemeet.onrender.com/recording/recordings/${fileName}`;
   };
 
   return (
@@ -63,7 +61,7 @@ function AdminRecordings() {
                 <td>{r.date}</td>
                 <td>{r.time}</td>
 
-                {/* ✅ PLAY */}
+                {/* 🎧 PLAY */}
                 <td>
                   <audio controls style={{ width: "200px" }}>
                     <source
@@ -74,7 +72,7 @@ function AdminRecordings() {
                   </audio>
                 </td>
 
-                {/* ✅ DOWNLOAD */}
+                {/* ⬇ DOWNLOAD */}
                 <td>
                   <a
                     href={getAudioUrl(r.fileName)}
@@ -98,7 +96,6 @@ function AdminRecordings() {
     </div>
 
   );
-
 }
 
 export default AdminRecordings;
