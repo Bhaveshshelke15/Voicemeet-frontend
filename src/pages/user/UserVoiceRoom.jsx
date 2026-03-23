@@ -14,10 +14,16 @@ function UserVoiceRoom() {
 
   const userId = localStorage.getItem("userId") || "user";
 
+  // 🔥 TURN + STUN (IMPORTANT)
   const configuration = {
     iceServers: [
       { urls: "stun:stun.l.google.com:19302" },
-      { urls: "stun:stun1.l.google.com:19302" }
+      { urls: "stun:stun1.l.google.com:19302" },
+      {
+        urls: "turn:global.relay.metered.ca:80",
+        username: "openrelayproject",
+        credential: "openrelayproject"
+      }
     ]
   };
 
@@ -37,6 +43,8 @@ function UserVoiceRoom() {
       webSocketFactory: () => socket,
 
       onConnect: () => {
+        console.log("Connected to WS");
+
         stompClient.current.subscribe(
           "/topic/signal/" + meetingId,
           handleSignal
@@ -58,6 +66,8 @@ function UserVoiceRoom() {
       audio: true
     });
 
+    console.log("Local tracks:", localStream.current.getAudioTracks());
+
     stompClient.current.publish({
       destination: "/app/signal",
       body: JSON.stringify({
@@ -78,7 +88,6 @@ function UserVoiceRoom() {
 
     const data = JSON.parse(message.body);
 
-    // 🔥 FILTER
     if (data.target && data.target !== userId) return;
     if (data.sender === userId) return;
 
@@ -91,7 +100,6 @@ function UserVoiceRoom() {
       );
 
       const answer = await peerConnection.current.createAnswer();
-
       await peerConnection.current.setLocalDescription(answer);
 
       stompClient.current.publish({
@@ -108,10 +116,17 @@ function UserVoiceRoom() {
 
     if (data.type === "candidate") {
 
-      if (peerConnection.current) {
-        await peerConnection.current.addIceCandidate(
-          new RTCIceCandidate(data.candidate)
-        );
+      if (
+        peerConnection.current &&
+        peerConnection.current.signalingState !== "closed"
+      ) {
+        try {
+          await peerConnection.current.addIceCandidate(
+            new RTCIceCandidate(data.candidate)
+          );
+        } catch (err) {
+          console.log("ICE error:", err);
+        }
       }
     }
   };
@@ -124,12 +139,19 @@ function UserVoiceRoom() {
 
     peerConnection.current = new RTCPeerConnection(configuration);
 
+    // 🔥 ICE DEBUG
+    peerConnection.current.oniceconnectionstatechange = () => {
+      console.log("ICE State:", peerConnection.current.iceConnectionState);
+    };
+
     localStream.current.getTracks().forEach(track => {
       peerConnection.current.addTrack(track, localStream.current);
     });
 
-    // 🔥 FIXED AUDIO
+    // 🔥 AUDIO FIX
     peerConnection.current.ontrack = (event) => {
+
+      console.log("REMOTE STREAM RECEIVED");
 
       const audio = document.createElement("audio");
 
@@ -137,13 +159,16 @@ function UserVoiceRoom() {
       audio.autoplay = true;
       audio.playsInline = true;
       audio.muted = !speakerOn;
+      audio.volume = 1.0;
 
       document.body.appendChild(audio);
 
       audioRef.current = audio;
 
-      audio.play().catch(() => {
-        console.log("Autoplay blocked");
+      audio.play().then(() => {
+        console.log("Audio playing");
+      }).catch(err => {
+        console.log("Autoplay blocked:", err);
       });
     };
 
@@ -190,10 +215,12 @@ function UserVoiceRoom() {
 
     if (peerConnection.current) {
       peerConnection.current.close();
+      peerConnection.current = null;
     }
 
     if (audioRef.current) {
       audioRef.current.remove();
+      audioRef.current = null;
     }
 
     if (localStream.current) {

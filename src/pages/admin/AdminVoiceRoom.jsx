@@ -12,6 +12,7 @@ function AdminVoiceRoom() {
   const localStream = useRef(null);
   const peerConnections = useRef({});
   const audioElements = useRef({});
+  const iceQueues = useRef({}); // 🔥 FIX
 
   const [joined, setJoined] = useState(false);
   const [participants, setParticipants] = useState([]);
@@ -26,7 +27,7 @@ function AdminVoiceRoom() {
   };
 
   ////////////////////////////////////////////////////////
-  // SOCKET CONNECT
+  // SOCKET
   ////////////////////////////////////////////////////////
 
   useEffect(() => {
@@ -73,14 +74,13 @@ function AdminVoiceRoom() {
   };
 
   ////////////////////////////////////////////////////////
-  // HANDLE SIGNAL
+  // SIGNAL
   ////////////////////////////////////////////////////////
 
   const handleSignal = async (message) => {
 
     const data = JSON.parse(message.body);
 
-    // 🔥 FILTER
     if (data.target && data.target !== "admin") return;
     if (data.sender === "admin") return;
 
@@ -98,20 +98,34 @@ function AdminVoiceRoom() {
       const pc = peerConnections.current[data.sender];
 
       if (pc) {
+
         await pc.setRemoteDescription(
           new RTCSessionDescription(data.answer)
         );
+
+        // 🔥 APPLY QUEUED ICE
+        if (iceQueues.current[data.sender]) {
+          iceQueues.current[data.sender].forEach(c =>
+            pc.addIceCandidate(c)
+          );
+          iceQueues.current[data.sender] = [];
+        }
       }
     }
 
     if (data.type === "candidate") {
 
       const pc = peerConnections.current[data.sender];
+      const candidate = new RTCIceCandidate(data.candidate);
 
-      if (pc) {
-        await pc.addIceCandidate(
-          new RTCIceCandidate(data.candidate)
-        );
+      if (pc && pc.remoteDescription) {
+        await pc.addIceCandidate(candidate);
+      } else {
+        // 🔥 STORE ICE
+        if (!iceQueues.current[data.sender]) {
+          iceQueues.current[data.sender] = [];
+        }
+        iceQueues.current[data.sender].push(candidate);
       }
     }
   };
@@ -129,23 +143,23 @@ function AdminVoiceRoom() {
       pc.addTrack(track, localStream.current);
     });
 
-    // 🔥 FIXED AUDIO
+    // 🔥 AUDIO FIX
     pc.ontrack = (event) => {
 
-      const audio = document.createElement("audio");
+      if (!audioElements.current[userId]) {
 
-      audio.srcObject = event.streams[0];
-      audio.autoplay = true;
-      audio.playsInline = true;
-      audio.muted = !speakerOn;
+        const audio = document.createElement("audio");
+        audio.autoplay = true;
+        audio.playsInline = true;
+        document.body.appendChild(audio);
 
-      document.body.appendChild(audio);
+        audioElements.current[userId] = audio;
+      }
 
-      audio.play().catch(() => {
-        console.log("Autoplay blocked");
-      });
+      audioElements.current[userId].srcObject = event.streams[0];
+      audioElements.current[userId].muted = !speakerOn;
 
-      audioElements.current[userId] = audio;
+      audioElements.current[userId].play().catch(() => {});
     };
 
     pc.onicecandidate = (event) => {
@@ -165,7 +179,7 @@ function AdminVoiceRoom() {
       }
     };
 
-    // 🔥 CREATE OFFER
+    // 🔥 OFFER
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
@@ -210,6 +224,8 @@ function AdminVoiceRoom() {
 
     Object.values(audioElements.current).forEach(audio => audio.remove());
     audioElements.current = {};
+
+    iceQueues.current = {};
 
     if (localStream.current) {
       localStream.current.getTracks().forEach(track => track.stop());
