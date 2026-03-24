@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { userLogin } from "../../api/authApi";
 import "../../styles/login.css";
 import { useNavigate } from "react-router-dom";
@@ -8,36 +8,74 @@ export default function UserLogin(){
 
   const navigate = useNavigate();
 
-  const [userId,setuserId] = useState("");
-  const [password,setPassword] = useState("");
+  const [userId, setuserId] = useState("");
+  const [password, setPassword] = useState("");
 
-  const handleLogin = async(e)=>{
+  //////////////////////////////////////////////////
+  // AUTO REDIRECT IF ALREADY LOGGED IN
+  //////////////////////////////////////////////////
+
+  useEffect(() => {
+
+    const token = localStorage.getItem("token");
+
+    if (token) {
+      navigate("/user/dashboard");
+    }
+
+  }, []);
+
+  //////////////////////////////////////////////////
+  // LOGIN
+  //////////////////////////////////////////////////
+
+  const handleLogin = async (e) => {
 
     e.preventDefault();
 
-    try{
+    try {
 
-      const res = await userLogin({userId,password});
+      const res = await userLogin({ userId, password });
 
-      localStorage.setItem("userToken",res.data.token);
+      console.log("Login Response:", res.data); // 🔥 DEBUG
+
+      //////////////////////////////////////////////////
+      // ✅ FIX: STORE EVERYTHING REQUIRED
+      //////////////////////////////////////////////////
+
+      // 🔥 IMPORTANT (this was missing)
+      localStorage.setItem("userId", res.data.userId || userId);
+
+      // 🔥 FIX token key mismatch
+      localStorage.setItem("token", res.data.token);
+
+      // optional (future use)
+      localStorage.setItem("role", "USER");
+
+      //////////////////////////////////////////////////
+      // REDIRECT
+      //////////////////////////////////////////////////
 
       navigate("/user/dashboard");
 
-    }catch(err){
+    } catch (err) {
 
+      console.error(err);
       alert("Invalid Credentials");
 
     }
 
-  }
+  };
+
+  //////////////////////////////////////////////////
+  // UI
+  //////////////////////////////////////////////////
 
   return(
 
     <div className="login-container">
 
       <div className="login-card">
-
-        {/* LOGO SECTION */}
 
         <div className="logo-section">
 
@@ -49,19 +87,19 @@ export default function UserLogin(){
 
         </div>
 
-        {/* LOGIN FORM */}
-
         <form onSubmit={handleLogin}>
 
           <input
             placeholder="User ID"
-            onChange={(e)=>setuserId(e.target.value)}
+            value={userId}
+            onChange={(e) => setuserId(e.target.value)}
           />
 
           <input
             type="password"
             placeholder="Password"
-            onChange={(e)=>setPassword(e.target.value)}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
           />
 
           <button type="submit">
