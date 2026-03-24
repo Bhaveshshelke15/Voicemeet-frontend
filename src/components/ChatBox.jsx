@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import SockJS from "sockjs-client";
 import { Client } from "@stomp/stompjs";
 import axios from "axios";
+import "../styles/chatbox.css";
 
 function ChatBox({ currentUser }) {
 
@@ -226,77 +227,74 @@ function ChatBox({ currentUser }) {
 
   return (
 
-    <div className="chat-container" style={{ display: "flex", height: "400px" }}>
+  <div className="chat-wrapper">
 
-      {/* LEFT SIDE */}
-      <div style={{ width: "30%", borderRight: "1px solid #ddd" }}>
+    {/* LEFT SIDE */}
+    <div className="chat-users">
 
-        <input
-          placeholder="Search..."
-          onChange={(e) => searchUser(e.target.value)}
-        />
+      <input
+        className="chat-search"
+        placeholder="Search..."
+        onChange={(e) => searchUser(e.target.value)}
+      />
 
+      <div className="user-list">
         {users.map(u => (
-          <div key={u.userId} onClick={() => loadChat(u.userId)}>
+          <div
+            key={u.userId}
+            className="user-item"
+            onClick={() => loadChat(u.userId)}
+          >
             {u.name}
           </div>
         ))}
-
       </div>
 
-      {/* RIGHT SIDE */}
-      <div style={{ width: "70%", padding: "10px" }}>
+    </div>
 
-        {selectedUser && (
-          <>
-            <h4>{selectedUser}</h4>
+    {/* RIGHT SIDE */}
+    <div className="chat-main">
 
-            {/* MESSAGES */}
-            <div style={{ height: "250px", overflowY: "auto" }}>
+      {selectedUser ? (
+        <>
+          <h4 className="chat-header">{selectedUser}</h4>
 
-              {messages.map((m, i) => (
+          {/* MESSAGES */}
+          <div className="chat-messages">
 
-                <div
-                  key={i}
-                  style={{
-                    textAlign: m.sender === currentUser ? "right" : "left",
-                    margin: "5px"
-                  }}
-                >
+            {messages.map((m, i) => (
 
-                  <span
-                    style={{
-                      background: m.sender === currentUser ? "#dcf8c6" : "#fff",
-                      padding: "8px",
-                      borderRadius: "10px",
-                      display: "inline-block"
-                    }}
-                  >
-                    {m.message}
-                    <br />
+              <div
+                key={i}
+                className={`message ${m.sender === currentUser ? "sent" : "received"}`}
+              >
 
-                    <small>
-                      {m.time} {" "}
-                      {m.sender === currentUser &&
-                        (m.status === "SEEN" ? "✔✔" : "✔")}
-                    </small>
+                <span className="message-bubble">
+                  {m.message}
+                  <br />
 
-                  </span>
+                  <small>
+                    {m.time} {" "}
+                    {m.sender === currentUser &&
+                      (m.status === "SEEN" ? "✔✔" : "✔")}
+                  </small>
+                </span>
 
-                </div>
+              </div>
 
-              ))}
+            ))}
 
-              {/* TYPING */}
-              {typingUser && (
-                <p>{typingUser} typing...</p>
-              )}
+            {typingUser && (
+              <p className="typing">{typingUser} typing...</p>
+            )}
 
-              <div ref={messageEndRef}></div>
+            <div ref={messageEndRef}></div>
 
-            </div>
+          </div>
 
-            {/* INPUT */}
+          {/* INPUT */}
+          <div className="chat-input-area">
+
             <input
               value={text}
               onChange={(e) => {
@@ -308,15 +306,20 @@ function ChatBox({ currentUser }) {
 
             <button onClick={sendMessage}>Send</button>
 
-          </>
-        )}
+          </div>
 
-      </div>
+        </>
+      ) : (
+        <div className="no-chat">
+          Select a user to start chatting
+        </div>
+      )}
 
     </div>
 
-  );
+  </div>
 
+);
 }
 
 export default ChatBox;

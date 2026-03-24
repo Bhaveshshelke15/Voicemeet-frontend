@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../../api/api";
+import ChatBox from "../../components/ChatBox"; // ✅ added
 import "../../styles/adminDashboard.css";
 
 export default function Dashboard() {
@@ -14,16 +15,12 @@ export default function Dashboard() {
   },[]);
 
   const fetchMeetings = async()=>{
-
     try{
-
       const res = await API.get("/admin/meetings");
       setMeetings(res.data);
-
     }catch(err){
       console.error(err);
     }
-
   };
 
   return (
@@ -61,13 +58,10 @@ export default function Dashboard() {
           <h2>{meetings.length}</h2>
           <p>Total Meetings</p>
 
-          {/* SHOW LIST ONLY WHEN CLICKED */}
           {showMeetings && (
-
             <div className="meeting-list">
 
               {meetings.map((m)=>(
-
                 <div key={m.meetingId} className="meeting-item">
 
                   <div>
@@ -78,7 +72,7 @@ export default function Dashboard() {
                   <button
                     className="join-btn"
                     onClick={(e)=>{
-                      e.stopPropagation(); // prevents card toggle
+                      e.stopPropagation();
                       navigate(`/admin/meeting/${m.meetingId}`);
                     }}
                   >
@@ -86,11 +80,9 @@ export default function Dashboard() {
                   </button>
 
                 </div>
-
               ))}
 
             </div>
-
           )}
 
         </div>
@@ -112,7 +104,7 @@ export default function Dashboard() {
       {/* Middle Section */}
       <div className="middle">
 
-        {/* Meeting Overview */}
+        {/* LEFT SIDE */}
         <div className="overview">
 
           <h3>Meeting Overview</h3>
@@ -134,23 +126,22 @@ export default function Dashboard() {
 
         </div>
 
-        {/* Right Side */}
+        {/* RIGHT SIDE */}
         <div className="right">
 
-          <div className="server-card">
-            <h3>Server Health</h3>
-            <h1>78%</h1>
-            <p>System Stable</p>
+          {/* ✅ CHAT BOX ADDED */}
+          <div className="chat-container">
+            <ChatBox currentUser="admin" />
           </div>
 
+          {/* RECORDINGS CARD */}
           <div className="recorded-card">
             <h3>Recorded Calls</h3>
             <p>No recordings available</p>
-            <button
-onClick={()=>navigate("/admin/recordings")}
->
-Meeting Recordings
-</button>
+
+            <button onClick={()=>navigate("/admin/recordings")}>
+              Meeting Recordings
+            </button>
           </div>
 
         </div>

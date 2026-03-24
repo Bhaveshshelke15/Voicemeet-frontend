@@ -237,8 +237,110 @@ background:#45a049;
   margin-top:10px;
 }
 
+.chat-container {
+  background: white;
+  padding: 10px;
+  border-radius: 12px;
+  height: 350px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
 
 
 
 
 
+
+/* ================= MOBILE RESPONSIVENESS FIX ================= */
+
+@media (max-width: 768px) {
+
+  /* MAIN CONTAINER */
+  .dashboard-container {
+    flex-direction: column;
+    height: auto;
+  }
+
+  /* SIDEBAR (handled by layout toggle) */
+  .sidebar {
+    width: 250px;
+    height: 100%;
+    position: fixed;
+    top: 0;
+    left: -260px;
+    z-index: 1000;
+    transition: 0.3s;
+  }
+
+  .sidebar.open {
+    left: 0;
+  }
+
+  /* MAIN CONTENT */
+  .main {
+    padding: 15px;
+  }
+
+  /* TOPBAR */
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  /* PROFILE */
+  .profile {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  /* STATS CARDS */
+  .stats {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .card {
+    width: 100%;
+  }
+
+  /* MIDDLE SECTION */
+  .middle {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .overview {
+    width: 100%;
+  }
+
+  .right {
+    width: 100%;
+  }
+
+  /* CHAT SECTION */
+  .chat-section {
+    margin-top: 20px;
+  }
+
+  .employee-list {
+    max-height: 120px;
+  }
+
+  /* INPUT FIELDS */
+  .meeting-input {
+    font-size: 14px;
+  }
+
+  .record-btn {
+    width: 100%;
+  }
+
+  /* BUTTONS */
+  .join-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+}
