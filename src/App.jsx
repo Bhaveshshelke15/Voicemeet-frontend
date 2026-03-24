@@ -16,6 +16,7 @@ import InviteUser from "./pages/admin/InviteUser";
 import Employees from "./pages/admin/Employees";
 import AdminVoiceRoom from "./pages/admin/AdminVoiceRoom";
 import AdminRecordings from "./pages/admin/AdminRecordings";
+import AdminChat from "./pages/admin/AdminChat";
 
 // USER PAGES
 import UserDashboard from "./pages/user/Dashboard";
@@ -44,6 +45,7 @@ function App() {
           <Route path="create-meeting" element={<CreateMeeting />} />
           <Route path="invite-user" element={<InviteUser />} />
           <Route path="employees" element={<Employees />} />
+          <Route path="chat" element={<AdminChat />} />
 
           {/* 🔥 FIXED MEETING ROUTE */}
           <Route path="meeting/:meetingId" element={<AdminVoiceRoom />} />

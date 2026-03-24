@@ -9,6 +9,7 @@ export default function BottomNav() {
       <Link to="/admin/dashboard">🏠</Link>
       <Link to="/admin/create-meeting">🎥</Link>
       <Link to="/admin/employees">👥</Link>
+      <Link to="/admin/invite-user">📨</Link>
       <Link to="/admin/chat">💬</Link>
       <Link to="/admin/settings">⚙</Link>
 
