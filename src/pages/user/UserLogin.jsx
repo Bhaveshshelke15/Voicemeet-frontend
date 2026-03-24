@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { userLogin } from "../../api/authApi";
 import "../../styles/login.css";
 import { useNavigate } from "react-router-dom";
@@ -12,21 +12,7 @@ export default function UserLogin(){
   const [password, setPassword] = useState("");
 
   //////////////////////////////////////////////////
-  // AUTO REDIRECT IF ALREADY LOGGED IN
-  //////////////////////////////////////////////////
-
-  useEffect(() => {
-
-    const token = localStorage.getItem("token");
-
-    if (token) {
-      navigate("/user/dashboard");
-    }
-
-  }, []);
-
-  //////////////////////////////////////////////////
-  // LOGIN
+  // LOGIN (FIXED)
   //////////////////////////////////////////////////
 
   const handleLogin = async (e) => {
@@ -37,23 +23,20 @@ export default function UserLogin(){
 
       const res = await userLogin({ userId, password });
 
-      console.log("Login Response:", res.data); // 🔥 DEBUG
+      console.log("Login Response:", res.data);
 
       //////////////////////////////////////////////////
-      // ✅ FIX: STORE EVERYTHING REQUIRED
+      // ✅ STORE REQUIRED DATA (MAIN FIX)
       //////////////////////////////////////////////////
 
-      // 🔥 IMPORTANT (this was missing)
+      // 🔥 THIS LINE FIXES YOUR WHOLE PROBLEM
       localStorage.setItem("userId", res.data.userId || userId);
 
-      // 🔥 FIX token key mismatch
+      // 🔥 FIX TOKEN NAME (your app uses "token")
       localStorage.setItem("token", res.data.token);
 
-      // optional (future use)
-      localStorage.setItem("role", "USER");
-
       //////////////////////////////////////////////////
-      // REDIRECT
+      // REDIRECT AFTER LOGIN
       //////////////////////////////////////////////////
 
       navigate("/user/dashboard");
@@ -68,7 +51,7 @@ export default function UserLogin(){
   };
 
   //////////////////////////////////////////////////
-  // UI
+  // UI (UNCHANGED)
   //////////////////////////////////////////////////
 
   return(
