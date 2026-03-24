@@ -1,16 +1,17 @@
+/* GLOBAL */
 body {
   margin: 0;
   font-family: Arial;
   background: #f4f6f9;
 }
 
+/* MAIN CONTAINER */
 .dashboard-container {
   display: flex;
-  height: 100vh;
+  min-height: 100vh;
 }
 
-/* Sidebar */
-
+/* SIDEBAR */
 .sidebar {
   width: 260px;
   background: #1f2235;
@@ -20,10 +21,12 @@ body {
   flex-direction: column;
 }
 
+/* LOGO */
 .logo {
   margin-bottom: 20px;
 }
 
+/* MENU */
 .menu {
   list-style: none;
   padding: 0;
@@ -34,66 +37,23 @@ body {
   cursor: pointer;
 }
 
+.menu li a {
+  color: white;
+  text-decoration: none;
+}
+
 .menu li.active {
   font-weight: bold;
 }
 
-.chat-section {
-  margin-top: auto;
-}
-
-.chat-search {
-  width: 100%;
-  padding: 8px;
-  border-radius: 6px;
-  border: none;
-}
-
-.employee-list {
-  max-height: 100px;
-  overflow-y: auto;
-}
-
-.employee-list p {
-  margin: 6px 0;
-}
-
-.chat-box {
-  background: #2a2e4a;
-  padding: 10px;
-  border-radius: 8px;
-}
-
-.message {
-  font-size: 12px;
-}
-
-.chat-input {
-  display: flex;
-  margin-top: 10px;
-}
-
-.chat-input input {
-  flex: 1;
-  padding: 6px;
-}
-
-.chat-input button {
-  background: #4f7cff;
-  border: none;
-  color: white;
-  padding: 6px 10px;
-}
-
-/* Main */
-
+/* MAIN CONTENT */
 .main {
   flex: 1;
-  padding: 30px;
+  padding: 25px;
+  overflow-x: hidden;
 }
 
-/* Topbar */
-
+/* TOPBAR */
 .topbar {
   display: flex;
   justify-content: space-between;
@@ -110,8 +70,7 @@ body {
   border-radius: 50%;
 }
 
-/* Stats */
-
+/* STATS */
 .stats {
   display: flex;
   gap: 20px;
@@ -123,16 +82,17 @@ body {
   flex: 1;
   padding: 20px;
   border-radius: 12px;
+  min-width: 0;
 }
 
-/* Middle */
-
+/* MIDDLE SECTION */
 .middle {
   display: flex;
   gap: 20px;
   margin-top: 20px;
 }
 
+/* LEFT */
 .overview {
   flex: 2;
   background: white;
@@ -140,6 +100,15 @@ body {
   border-radius: 12px;
 }
 
+/* RIGHT */
+.right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* INPUTS */
 .meeting-input {
   width: 100%;
   padding: 10px;
@@ -155,19 +124,7 @@ body {
   border-radius: 8px;
 }
 
-.right {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.server-card {
-  background: linear-gradient(135deg,#ffd43b,#ffcc00);
-  padding: 20px;
-  border-radius: 12px;
-}
-
+/* RECORD CARD */
 .recorded-card {
   background: #1f2a44;
   color: white;
@@ -175,20 +132,57 @@ body {
   border-radius: 12px;
 }
 
-/* Responsive */
+/* CHAT BOX */
+.chat-container {
+  background: white;
+  padding: 10px;
+  border-radius: 12px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 300px;
+}
 
-@media (max-width:900px) {
+/* MEETING LIST */
+.meeting-list {
+  margin-top: 10px;
+  max-height: 200px;
+  overflow-y: auto;
+}
 
-  .dashboard-container {
-    flex-direction: column;
-  }
+.meeting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid #eee;
+}
 
-  .sidebar {
-    width: 100%;
-  }
+/* BUTTON */
+.join-btn {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.join-btn:hover {
+  background: #45a049;
+}
+
+/* ================= RESPONSIVE ================= */
+
+/* TABLET */
+@media (max-width: 1024px) {
 
   .stats {
-    flex-direction: column;
+    flex-wrap: wrap;
+  }
+
+  .card {
+    flex: 1 1 45%;
   }
 
   .middle {
@@ -197,78 +191,20 @@ body {
 
 }
 
-
-
-
-.meeting-list{
-margin-top:10px;
-max-height:150px;
-overflow-y:auto;
-}
-
-.meeting-item{
-display:flex;
-justify-content:space-between;
-align-items:center;
-padding:6px 0;
-border-bottom:1px solid #eee;
-}
-
-.join-btn{
-background:#4CAF50;
-color:white;
-border:none;
-padding:5px 10px;
-border-radius:4px;
-cursor:pointer;
-}
-
-.join-btn:hover{
-background:#45a049;
-}
-
-
-
-
-
-.meeting-list{
-  max-height:200px;
-  overflow-y:auto;
-  margin-top:10px;
-}
-
-.chat-container {
-  background: white;
-  padding: 10px;
-  border-radius: 12px;
-  height: 350px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-
-
-
-
-
-/* ================= MOBILE RESPONSIVENESS FIX ================= */
-
+/* MOBILE */
 @media (max-width: 768px) {
 
-  /* MAIN CONTAINER */
   .dashboard-container {
     flex-direction: column;
-    height: auto;
   }
 
-  /* SIDEBAR (handled by layout toggle) */
+  /* SIDEBAR MOBILE */
   .sidebar {
-    width: 250px;
-    height: 100%;
     position: fixed;
     top: 0;
     left: -260px;
+    width: 250px;
+    height: 100%;
     z-index: 1000;
     transition: 0.3s;
   }
@@ -277,7 +213,7 @@ background:#45a049;
     left: 0;
   }
 
-  /* MAIN CONTENT */
+  /* MAIN */
   .main {
     padding: 15px;
   }
@@ -289,13 +225,7 @@ background:#45a049;
     gap: 10px;
   }
 
-  /* PROFILE */
-  .profile {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  /* STATS CARDS */
+  /* STATS */
   .stats {
     flex-direction: column;
     gap: 15px;
@@ -305,42 +235,20 @@ background:#45a049;
     width: 100%;
   }
 
-  /* MIDDLE SECTION */
+  /* MIDDLE */
   .middle {
     flex-direction: column;
     gap: 15px;
   }
 
-  .overview {
-    width: 100%;
-  }
-
+  .overview,
   .right {
     width: 100%;
   }
 
-  /* CHAT SECTION */
-  .chat-section {
-    margin-top: 20px;
-  }
-
-  .employee-list {
-    max-height: 120px;
-  }
-
-  /* INPUT FIELDS */
-  .meeting-input {
-    font-size: 14px;
-  }
-
-  .record-btn {
-    width: 100%;
-  }
-
-  /* BUTTONS */
-  .join-btn {
-    padding: 6px 12px;
-    font-size: 12px;
+  /* CHAT */
+  .chat-container {
+    min-height: 250px;
   }
 
 }
