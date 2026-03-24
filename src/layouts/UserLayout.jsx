@@ -3,18 +3,16 @@ import "../styles/userLayout.css";
 import { FaHome, FaVideo, FaUsers } from "react-icons/fa";
 import ChatBox from "../components/ChatBox";
 
-export default function UserLayout(){
+export default function UserLayout() {
 
   const location = useLocation();
-
   const userId = localStorage.getItem("userId");
 
-  return(
+  return (
 
     <div className="dashboard-container">
 
-      {/* Sidebar */}
-
+      {/* ✅ SIDEBAR (Desktop Only) */}
       <div className="sidebar">
 
         <div className="logo">
@@ -43,19 +41,18 @@ export default function UserLayout(){
 
         </ul>
 
-        {/* CHAT BOX */}
-
-        <ChatBox currentUser={userId}/>
+        {/* CHAT (Desktop only) */}
+        <div className="chat-desktop">
+          <ChatBox currentUser={userId} />
+        </div>
 
       </div>
 
 
-      {/* Main Area */}
-
+      {/* ✅ MAIN AREA */}
       <div className="main-area">
 
-        {/* Topbar */}
-
+        {/* TOPBAR */}
         <div className="topbar">
 
           <h3>Welcome Back</h3>
@@ -82,19 +79,37 @@ export default function UserLayout(){
 
         </div>
 
-
-        {/* Page Content */}
-
+        {/* CONTENT */}
         <div className="content">
-
-          <Outlet/>
-
+          <Outlet />
         </div>
 
       </div>
 
+
+      {/* ✅ MOBILE BOTTOM NAV */}
+      <div className="bottom-nav">
+
+        <Link to="/user/dashboard"
+          className={location.pathname === "/user/dashboard" ? "active" : ""}>
+          <FaHome />
+          <span>Home</span>
+        </Link>
+
+        <Link to="/user/meetings"
+          className={location.pathname === "/user/meetings" ? "active" : ""}>
+          <FaUsers />
+          <span>Meetings</span>
+        </Link>
+
+        <Link to="/user/join-meeting"
+          className={location.pathname === "/user/join-meeting" ? "active" : ""}>
+          <FaVideo />
+          <span>Join</span>
+        </Link>
+
+      </div>
+
     </div>
-
   );
-
 }

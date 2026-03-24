@@ -1,105 +1,117 @@
-.user-dashboard{
-  display:flex;
-  gap:30px;
-  padding:25px;
-  background:#f5f7fb;
-  min-height:100vh;
+/* ✅ MOBILE FIRST DESIGN */
+
+.user-dashboard {
+  padding: 15px;
+  background: #f5f7fb;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-/* MEETING SECTION */
-
-.meeting-section{
-  flex:2;
+/* ✅ STATS */
+.stats-container {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-.meeting-section h2{
-  margin-bottom:20px;
+.stat-card {
+  flex: 1;
+  min-width: 100px;
+  background: #1f2937;
+  color: white;
+  padding: 12px;
+  border-radius: 10px;
+  text-align: center;
 }
 
-.meeting-card{
-  background:white;
-  padding:18px;
-  border-radius:12px;
-  margin-bottom:15px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  box-shadow:0 4px 10px rgba(0,0,0,0.05);
+.stat-card h3 {
+  font-size: 12px;
+  margin-bottom: 5px;
 }
 
-.meeting-card h3{
-  margin:0;
+.stat-card p {
+  font-size: 18px;
+  font-weight: bold;
 }
 
-.meeting-card p{
-  color:#666;
+/* ✅ MEETING SECTION */
+.meeting-section h2 {
+  margin-bottom: 10px;
 }
 
-.join-btn{
-  background:#4f7cff;
-  color:white;
-  border:none;
-  padding:8px 16px;
-  border-radius:8px;
-  cursor:pointer;
-  font-weight:600;
+.meeting-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.join-btn:hover{
-  background:#365ce6;
+.meeting-card {
+  background: white;
+  padding: 15px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;   /* 🔥 MOBILE STACK */
+  gap: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
 }
 
-.no-meeting{
-  color:#888;
+.meeting-card h3 {
+  margin: 0;
 }
 
-/* CHAT SECTION */
-
-.chat-section{
-  flex:1;
-  background:white;
-  border-radius:12px;
-  padding:20px;
-  display:flex;
-  flex-direction:column;
-  height:500px;
+.meeting-card p {
+  color: #666;
+  font-size: 14px;
 }
 
-.chat-section h2{
-  margin-bottom:15px;
+/* ✅ BUTTON */
+.join-btn {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  width: 100%;   /* 🔥 FULL WIDTH FOR MOBILE */
+  font-weight: 600;
 }
 
-.chat-box{
-  flex:1;
-  overflow-y:auto;
-  border:1px solid #eee;
-  padding:10px;
-  border-radius:8px;
-  margin-bottom:10px;
+.join-btn:hover {
+  background: #2563eb;
 }
 
-.chat-message{
-  margin-bottom:8px;
-  font-size:14px;
+.no-meeting {
+  color: #888;
 }
 
-.chat-input{
-  display:flex;
-  gap:10px;
-}
+/* ❌ REMOVE CHAT FROM HERE (handled in layout) */
 
-.chat-input input{
-  flex:1;
-  padding:8px;
-  border-radius:6px;
-  border:1px solid #ddd;
-}
 
-.chat-input button{
-  background:#4f7cff;
-  color:white;
-  border:none;
-  padding:8px 15px;
-  border-radius:6px;
-  cursor:pointer;
+/* 💻 DESKTOP VIEW */
+@media (min-width: 768px) {
+
+  .user-dashboard {
+    flex-direction: row;
+    gap: 30px;
+    padding: 25px;
+  }
+
+  .meeting-section {
+    flex: 2;
+  }
+
+  /* 🔥 BACK TO ROW LAYOUT */
+  .meeting-card {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .join-btn {
+    width: auto;
+    padding: 8px 16px;
+  }
+
 }
