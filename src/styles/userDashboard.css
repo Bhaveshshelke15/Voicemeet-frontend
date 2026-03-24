@@ -1,60 +1,51 @@
-/* ✅ MOBILE FIRST DESIGN */
-
 .user-dashboard {
-  padding: 15px;
+  padding: 20px;
   background: #f5f7fb;
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
 }
 
 /* ✅ STATS */
 .stats-container {
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 20px;
 }
 
 .stat-card {
   flex: 1;
-  min-width: 100px;
   background: #1f2937;
   color: white;
-  padding: 12px;
+  padding: 15px;
   border-radius: 10px;
   text-align: center;
 }
 
-.stat-card h3 {
-  font-size: 12px;
-  margin-bottom: 5px;
+.stat-card h4 {
+  margin: 0;
+  font-size: 14px;
 }
 
 .stat-card p {
-  font-size: 18px;
+  font-size: 22px;
   font-weight: bold;
 }
 
-/* ✅ MEETING SECTION */
-.meeting-section h2 {
-  margin-bottom: 10px;
+/* ✅ GRID */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
 }
 
-.meeting-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
+/* ✅ MEETINGS */
 .meeting-card {
   background: white;
   padding: 15px;
   border-radius: 10px;
+  margin-bottom: 12px;
   display: flex;
-  flex-direction: column;   /* 🔥 MOBILE STACK */
-  gap: 10px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  justify-content: space-between;
+  align-items: center;
 }
 
 .meeting-card h3 {
@@ -63,55 +54,51 @@
 
 .meeting-card p {
   color: #666;
-  font-size: 14px;
 }
 
-/* ✅ BUTTON */
+/* BUTTON */
 .join-btn {
   background: #3b82f6;
   color: white;
   border: none;
-  padding: 10px;
+  padding: 8px 14px;
   border-radius: 8px;
   cursor: pointer;
-  width: 100%;   /* 🔥 FULL WIDTH FOR MOBILE */
-  font-weight: 600;
 }
 
-.join-btn:hover {
-  background: #2563eb;
+/* ✅ CHAT */
+.chat-section {
+  background: white;
+  padding: 15px;
+  border-radius: 10px;
+  height: 400px;
+  display: flex;
+  flex-direction: column;
 }
 
-.no-meeting {
-  color: #888;
-}
+/* 📱 MOBILE */
+@media (max-width: 768px) {
 
-/* ❌ REMOVE CHAT FROM HERE (handled in layout) */
-
-
-/* 💻 DESKTOP VIEW */
-@media (min-width: 768px) {
-
-  .user-dashboard {
-    flex-direction: row;
-    gap: 30px;
-    padding: 25px;
+  .stats-container {
+    flex-direction: column;
   }
 
-  .meeting-section {
-    flex: 2;
+  .dashboard-grid {
+    grid-template-columns: 1fr;
   }
 
-  /* 🔥 BACK TO ROW LAYOUT */
   .meeting-card {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
   }
 
   .join-btn {
-    width: auto;
-    padding: 8px 16px;
+    width: 100%;
+  }
+
+  .chat-section {
+    height: auto;
   }
 
 }

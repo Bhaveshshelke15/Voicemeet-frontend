@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import ChatBox from "../../components/ChatBox";
 import "../../styles/userDashboard.css";
 
 export default function Dashboard() {
@@ -15,7 +16,6 @@ export default function Dashboard() {
   useEffect(() => {
 
     const fetchMeetings = async () => {
-
       try {
         const res = await axios.get(
           "https://voicemeet.onrender.com/meeting/user/" + userId,
@@ -33,9 +33,7 @@ export default function Dashboard() {
       }
     };
 
-    if (userId && token) {
-      fetchMeetings();
-    }
+    if (userId && token) fetchMeetings();
 
   }, [userId, token]);
 
@@ -47,52 +45,43 @@ export default function Dashboard() {
 
     <div className="user-dashboard">
 
-      {/* ✅ STATS (MATCH ADMIN STYLE) */}
+      {/* ✅ STATS */}
       <div className="stats-container">
 
         <div className="stat-card">
-          <h3>Total Meetings</h3>
+          <h4>Total</h4>
           <p>{meetings.length}</p>
         </div>
 
         <div className="stat-card">
-          <h3>Active</h3>
-          <p>
-            {meetings.filter(m => m.status === "ACTIVE").length}
-          </p>
+          <h4>Active</h4>
+          <p>{meetings.filter(m => m.status === "ACTIVE").length}</p>
         </div>
 
         <div className="stat-card">
-          <h3>Completed</h3>
-          <p>
-            {meetings.filter(m => m.status === "ENDED").length}
-          </p>
+          <h4>Completed</h4>
+          <p>{meetings.filter(m => m.status === "ENDED").length}</p>
         </div>
 
       </div>
 
+      {/* ✅ MAIN CONTENT */}
+      <div className="dashboard-grid">
 
-      {/* ✅ MEETING LIST */}
-      <div className="meeting-section">
+        {/* 🟢 MEETINGS */}
+        <div className="meeting-section">
 
-        <h2>My Meetings</h2>
+          <h2>My Meetings</h2>
 
-        {meetings.length === 0 ? (
-
-          <p className="no-meeting">No Meetings Invited</p>
-
-        ) : (
-
-          <div className="meeting-list">
-
-            {meetings.map((m, index) => (
-
+          {meetings.length === 0 ? (
+            <p className="no-meeting">No Meetings</p>
+          ) : (
+            meetings.map((m, index) => (
               <div key={index} className="meeting-card">
 
-                <div className="meeting-info">
+                <div>
                   <h3>{m.meetingName}</h3>
-                  <p><b>Code:</b> {m.meetingId}</p>
-                  <p><b>Status:</b> {m.status}</p>
+                  <p>Status: {m.status}</p>
                 </div>
 
                 <button
@@ -103,12 +92,16 @@ export default function Dashboard() {
                 </button>
 
               </div>
+            ))
+          )}
 
-            ))}
+        </div>
 
-          </div>
-
-        )}
+        {/* 🔵 CHAT (MOVED HERE) */}
+        <div className="chat-section">
+          <h2>Team Chat</h2>
+          <ChatBox currentUser={userId} />
+        </div>
 
       </div>
 

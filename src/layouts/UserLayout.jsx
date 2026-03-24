@@ -42,9 +42,7 @@ export default function UserLayout() {
         </ul>
 
         {/* CHAT (Desktop only) */}
-        <div className="chat-desktop">
-          <ChatBox currentUser={userId} />
-        </div>
+        
 
       </div>
 
