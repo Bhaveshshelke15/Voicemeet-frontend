@@ -1,0 +1,38 @@
+/* ===== MAIN LAYOUT ===== */
+.layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ===== SIDEBAR (HIDDEN IN MOBILE) ===== */
+.sidebar-container {
+  display: none;
+}
+
+/* ===== CONTENT ===== */
+.content {
+  flex: 1;
+  padding: 15px;
+  padding-bottom: 70px; /* space for bottom nav */
+  background: #f4f6f9;
+}
+
+/* ===== DESKTOP VIEW ===== */
+@media (min-width: 768px) {
+
+  .layout {
+    flex-direction: row;
+  }
+
+  .sidebar-container {
+    display: block;
+    width: 250px;
+  }
+
+  .content {
+    padding: 20px;
+    padding-bottom: 20px;
+  }
+
+}

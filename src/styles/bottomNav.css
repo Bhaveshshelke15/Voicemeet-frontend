@@ -1,0 +1,29 @@
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+
+  height: 60px;
+  background: #1f2235;
+
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+
+  color: white;
+  z-index: 1000;
+}
+
+.bottom-nav a {
+  color: white;
+  text-decoration: none;
+  font-size: 20px;
+}
+
+/* Hide in desktop */
+@media (min-width: 768px) {
+  .bottom-nav {
+    display: none;
+  }
+}

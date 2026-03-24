@@ -1,32 +1,25 @@
-import { useState } from "react";
 import Sidebar from "../components/Sidebar";
+import BottomNav from "../components/BottomNav";
 import { Outlet } from "react-router-dom";
-import "../styles/adminDashboard.css";
+import "../styles/adminLayout.css";
 
 export default function AdminLayout() {
 
-  const [isOpen, setIsOpen] = useState(false);
-
   return (
-    <div className="dashboard-container">
+    <div className="layout">
 
-      {/* 🔥 MOBILE TOP BAR */}
-      <div className="mobile-header">
-        <button className="menu-btn" onClick={() => setIsOpen(!isOpen)}>
-          ☰
-        </button>
-        <h3>Admin Panel</h3>
+      {/* Sidebar (Desktop only) */}
+      <div className="sidebar-container">
+        <Sidebar />
       </div>
 
-      {/* 🔥 SIDEBAR */}
-      <div className={`sidebar-wrapper ${isOpen ? "open" : ""}`}>
-        <Sidebar closeSidebar={() => setIsOpen(false)} />
-      </div>
-
-      {/* 🔥 MAIN CONTENT */}
-      <div className="main">
+      {/* Main Content */}
+      <div className="content">
         <Outlet />
       </div>
+
+      {/* Bottom Nav (Mobile only) */}
+      <BottomNav />
 
     </div>
   );
