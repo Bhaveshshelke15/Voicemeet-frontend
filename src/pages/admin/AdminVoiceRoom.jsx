@@ -14,7 +14,6 @@ function AdminVoiceRoom() {
   const audioElements = useRef({});
   const iceQueues = useRef({});
 
-  // 🔥 RECORDING
   const mediaRecorder = useRef(null);
   const recordedChunks = useRef([]);
 
@@ -23,7 +22,7 @@ function AdminVoiceRoom() {
   const [isMuted, setIsMuted] = useState(false);
   const [speakerOn, setSpeakerOn] = useState(true);
 
-  // 🔥 NEW STATE (ACTIVE SPEAKER)
+  // 🔥 Active Speaker
   const [activeSpeaker, setActiveSpeaker] = useState(null);
 
   const configuration = {
@@ -181,11 +180,9 @@ function AdminVoiceRoom() {
     pc.ontrack = (event) => {
 
       if (!audioElements.current[userId]) {
-
         const audio = document.createElement("audio");
         audio.autoplay = true;
         audio.playsInline = true;
-
         document.body.appendChild(audio);
         audioElements.current[userId] = audio;
       }
@@ -193,13 +190,9 @@ function AdminVoiceRoom() {
       const audio = audioElements.current[userId];
       audio.srcObject = event.streams[0];
       audio.muted = !speakerOn;
-
       audio.play().catch(() => {});
 
-      ////////////////////////////////////////////////////////
-      // 🔥 ADD REMOTE AUDIO TO RECORDING
-      ////////////////////////////////////////////////////////
-
+      // 🔥 Recording add
       if (mediaRecorder.current) {
         event.streams[0].getTracks().forEach(track => {
           try {
@@ -209,7 +202,7 @@ function AdminVoiceRoom() {
       }
 
       ////////////////////////////////////////////////////////
-      // 🔥 SPEAKER DETECTION
+      // 🔥 SPEAKER DETECTION (FIXED)
       ////////////////////////////////////////////////////////
 
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -221,13 +214,20 @@ function AdminVoiceRoom() {
 
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
+      let lastSpokeTime = Date.now();
+
       const detectSpeaking = () => {
         analyser.getByteFrequencyData(dataArray);
 
         const volume = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
 
-        if (volume > 20) {
+        if (volume > 25) {
+          lastSpokeTime = Date.now();
           setActiveSpeaker(userId);
+        }
+
+        if (Date.now() - lastSpokeTime > 800) {
+          setActiveSpeaker(prev => (prev === userId ? null : prev));
         }
 
         requestAnimationFrame(detectSpeaking);
@@ -237,9 +237,7 @@ function AdminVoiceRoom() {
     };
 
     pc.onicecandidate = (event) => {
-
       if (event.candidate) {
-
         stompClient.current.publish({
           destination: "/app/signal",
           body: JSON.stringify({
@@ -312,6 +310,7 @@ function AdminVoiceRoom() {
             body: formData
           });
         } catch (err) {}
+
         recordedChunks.current = [];
       };
     }
@@ -344,11 +343,8 @@ function AdminVoiceRoom() {
       <p>Meeting ID: {meetingId}</p>
 
       {!joined ? (
-
         <button onClick={joinMeeting}>Start Meeting</button>
-
       ) : (
-
         <>
           <h3>Participants</h3>
 
@@ -385,7 +381,6 @@ function AdminVoiceRoom() {
 
           </div>
         </>
-
       )}
 
     </div>

@@ -14,7 +14,7 @@ function UserVoiceRoom() {
 
   const userId = localStorage.getItem("userId") || "user";
 
-  // 🔥 TURN + STUN (IMPORTANT)
+  // 🔥 TURN + STUN
   const configuration = {
     iceServers: [
       { urls: "stun:stun.l.google.com:19302" },
@@ -28,7 +28,6 @@ function UserVoiceRoom() {
   };
 
   const [joined, setJoined] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
   const [speakerOn, setSpeakerOn] = useState(true);
 
   ////////////////////////////////////////////////////////
@@ -66,7 +65,10 @@ function UserVoiceRoom() {
       audio: true
     });
 
-    console.log("Local tracks:", localStream.current.getAudioTracks());
+    // 🔥 Start MUTED
+    localStream.current.getAudioTracks().forEach(track => {
+      track.enabled = false;
+    });
 
     stompClient.current.publish({
       destination: "/app/signal",
@@ -139,7 +141,6 @@ function UserVoiceRoom() {
 
     peerConnection.current = new RTCPeerConnection(configuration);
 
-    // 🔥 ICE DEBUG
     peerConnection.current.oniceconnectionstatechange = () => {
       console.log("ICE State:", peerConnection.current.iceConnectionState);
     };
@@ -148,7 +149,7 @@ function UserVoiceRoom() {
       peerConnection.current.addTrack(track, localStream.current);
     });
 
-    // 🔥 AUDIO FIX
+    // 🔥 RECEIVE AUDIO
     peerConnection.current.ontrack = (event) => {
 
       console.log("REMOTE STREAM RECEIVED");
@@ -165,9 +166,7 @@ function UserVoiceRoom() {
 
       audioRef.current = audio;
 
-      audio.play().then(() => {
-        console.log("Audio playing");
-      }).catch(err => {
+      audio.play().catch(err => {
         console.log("Autoplay blocked:", err);
       });
     };
@@ -190,15 +189,26 @@ function UserVoiceRoom() {
   };
 
   ////////////////////////////////////////////////////////
-  // CONTROLS
+  // 🔥 PUSH TO TALK
   ////////////////////////////////////////////////////////
 
-  const toggleMute = () => {
+  const handleSpeakStart = () => {
+    if (!localStream.current) return;
     localStream.current.getAudioTracks().forEach(track => {
-      track.enabled = !track.enabled;
+      track.enabled = true;
     });
-    setIsMuted(!isMuted);
   };
+
+  const handleSpeakEnd = () => {
+    if (!localStream.current) return;
+    localStream.current.getAudioTracks().forEach(track => {
+      track.enabled = false;
+    });
+  };
+
+  ////////////////////////////////////////////////////////
+  // SPEAKER CONTROL
+  ////////////////////////////////////////////////////////
 
   const toggleSpeaker = () => {
     if (audioRef.current) {
@@ -235,31 +245,94 @@ function UserVoiceRoom() {
   ////////////////////////////////////////////////////////
 
   return (
-    <div style={{ padding: "20px" }}>
+    <div style={{
+      padding: "30px",
+      textAlign: "center",
+      fontFamily: "Segoe UI"
+    }}>
 
       <h2>User Voice Room</h2>
-      <p>Meeting ID: {meetingId}</p>
+      <p style={{ color: "#666" }}>Meeting ID: {meetingId}</p>
 
       {!joined ? (
 
-        <button onClick={joinMeeting}>Join</button>
+        <button
+          style={{
+            padding: "12px 20px",
+            borderRadius: "8px",
+            border: "none",
+            background: "#4CAF50",
+            color: "white",
+            fontWeight: "bold",
+            cursor: "pointer"
+          }}
+          onClick={joinMeeting}
+        >
+          Join Meeting
+        </button>
 
       ) : (
 
         <>
-          <p>Connected 🎤</p>
+          <p style={{ marginTop: "20px" }}>
+            Connected 🎧 <br /> <b>Hold button to speak</b>
+          </p>
 
-          <div style={{ marginTop: "20px" }}>
+          <div style={{ marginTop: "30px" }}>
 
-            <button onClick={toggleMute}>
-              {isMuted ? "🔇 Unmute" : "🎤 Mute"}
+            {/* 🎤 PUSH TO TALK */}
+            <button
+              style={{
+                background: "#2196F3",
+                color: "white",
+                padding: "16px 28px",
+                border: "none",
+                borderRadius: "12px",
+                fontSize: "18px",
+                fontWeight: "bold",
+                cursor: "pointer",
+                boxShadow: "0 4px 10px rgba(0,0,0,0.2)"
+              }}
+              onMouseDown={handleSpeakStart}
+              onMouseUp={handleSpeakEnd}
+              onMouseLeave={handleSpeakEnd}
+              onTouchStart={handleSpeakStart}
+              onTouchEnd={handleSpeakEnd}
+            >
+              🎤 Hold to Speak
             </button>
 
-            <button onClick={toggleSpeaker}>
-              {speakerOn ? "🔊 Speaker Off" : "🔊 Speaker On"}
+            <br /><br />
+
+            {/* 🔊 Speaker */}
+            <button
+              style={{
+                padding: "10px 20px",
+                borderRadius: "8px",
+                border: "none",
+                background: speakerOn ? "#28a745" : "#6c757d",
+                color: "white",
+                cursor: "pointer"
+              }}
+              onClick={toggleSpeaker}
+            >
+              {speakerOn ? "🔊 Speaker ON" : "🔇 Speaker OFF"}
             </button>
 
-            <button onClick={leaveMeeting}>
+            <br /><br />
+
+            {/* 📞 Leave */}
+            <button
+              style={{
+                padding: "10px 20px",
+                borderRadius: "8px",
+                border: "none",
+                background: "#f44336",
+                color: "white",
+                cursor: "pointer"
+              }}
+              onClick={leaveMeeting}
+            >
               📞 Leave
             </button>
 
