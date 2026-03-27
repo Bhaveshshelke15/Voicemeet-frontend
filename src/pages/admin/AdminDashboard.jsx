@@ -7,7 +7,7 @@ import "../../styles/adminDashboard.css";
 export default function Dashboard() {
 
   const [meetings, setMeetings] = useState([]);
-  const [users, setUsers] = useState([]); // ✅ NEW
+  const [employees, setEmployees] = useState([]); // ✅ NEW
   const [activeCalls, setActiveCalls] = useState(0); // ✅ NEW
   const [showMeetings, setShowMeetings] = useState(false);
 
@@ -15,7 +15,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchMeetings();
-    fetchUsers(); // ✅ NEW
+    fetchEmployees(); // ✅ NEW
   }, []);
 
   const fetchMeetings = async () => {
@@ -32,10 +32,10 @@ export default function Dashboard() {
     }
   };
 
-  const fetchUsers = async () => {
+  const fetchEmployees = async () => {
     try {
-      const res = await API.get("/admin/users"); // ✅ your API
-      setUsers(res.data);
+      const res = await API.get("/admin/employees"); // ✅ your API
+      setEmployees(res.data);
     } catch (err) {
       console.error(err);
     }
