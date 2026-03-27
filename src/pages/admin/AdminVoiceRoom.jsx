@@ -12,13 +12,11 @@ function AdminVoiceRoom() {
   const localStream = useRef(null);
   const peerConnections = useRef({});
   const audioElements = useRef({});
-  const iceQueues = useRef({});
 
   const mediaRecorder = useRef(null);
   const recordedChunks = useRef([]);
   const combinedStream = useRef(new MediaStream());
 
-  // 🔥 NEW (Audio Mixer)
   const audioContextRef = useRef(null);
   const destinationRef = useRef(null);
 
@@ -65,11 +63,10 @@ function AdminVoiceRoom() {
       audio: true
     });
 
-    // 🔥 AUDIO MIXER SETUP
+    // AUDIO MIXER SETUP
     audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
     destinationRef.current = audioContextRef.current.createMediaStreamDestination();
 
-    // Add admin audio
     const source = audioContextRef.current.createMediaStreamSource(localStream.current);
     source.connect(destinationRef.current);
 
@@ -100,7 +97,10 @@ function AdminVoiceRoom() {
     recordedChunks.current = [];
 
     try {
-      mediaRecorder.current = new MediaRecorder(combinedStream.current);
+      mediaRecorder.current = new MediaRecorder(combinedStream.current, {
+        mimeType: "audio/webm;codecs=opus",
+        audioBitsPerSecond: 64000
+      });
     } catch (e) {
       console.error("❌ MediaRecorder error:", e);
       return;
@@ -120,7 +120,11 @@ function AdminVoiceRoom() {
       console.error("Recorder error FULL:", e);
     };
 
-    mediaRecorder.current.start(1000);
+    try {
+      mediaRecorder.current.start(2000);
+    } catch (e) {
+      console.error("Start recording failed:", e);
+    }
   };
 
   ////////////////////////////////////////////////////////
@@ -145,7 +149,6 @@ function AdminVoiceRoom() {
 
     if (data.type === "answer") {
       const pc = peerConnections.current[data.sender];
-
       if (pc && pc.signalingState !== "stable") {
         try {
           await pc.setRemoteDescription(
@@ -195,12 +198,18 @@ function AdminVoiceRoom() {
       audio.muted = !speakerOn;
       audio.play().catch(() => {});
 
-      // 🔥 ADD TO MIXER (NO CRASH)
-      try {
-        const remoteSource = audioContextRef.current.createMediaStreamSource(event.streams[0]);
-        remoteSource.connect(destinationRef.current);
-      } catch (e) {
-        console.log("Audio mix error:", e);
+      // SAFE AUDIO MIX
+      if (
+        audioContextRef.current &&
+        audioContextRef.current.state !== "closed"
+      ) {
+        try {
+          const remoteSource =
+            audioContextRef.current.createMediaStreamSource(event.streams[0]);
+          remoteSource.connect(destinationRef.current);
+        } catch (e) {
+          console.log("Audio mix error:", e);
+        }
       }
 
       // SPEAKER DETECTION (unchanged)
@@ -319,7 +328,14 @@ function AdminVoiceRoom() {
               }
             );
 
-            console.log("✅ Upload response:", await res.text());
+            const text = await res.text();
+
+            if (!res.ok) {
+              console.error("❌ Upload failed:", text);
+            } else {
+              console.log("✅ Upload success:", text);
+            }
+
           } catch (err) {
             console.error("❌ Upload failed:", err);
           }
@@ -336,8 +352,12 @@ function AdminVoiceRoom() {
     }
 
     // CLEANUP
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
+    if (audioContextRef.current && audioContextRef.current.state !== "closed") {
+      try {
+        await audioContextRef.current.close();
+      } catch (e) {
+        console.log("AudioContext close error:", e);
+      }
     }
 
     Object.values(peerConnections.current).forEach(pc => pc.close());

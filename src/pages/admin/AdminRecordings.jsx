@@ -15,12 +15,20 @@ function AdminRecordings() {
       const res = await API.get("/recording/all");
       setRecordings(res.data);
     } catch (err) {
-      console.error(err);
+      console.error("❌ Fetch error:", err);
     }
   };
 
-  const getAudioUrl = (fileName) => {
-    return `https://voicemeet.onrender.com/recording/recordings/${fileName}`;
+  // ✅ NOW DIRECTLY USE CLOUDINARY URL
+  const getAudioUrl = (record) => {
+    if (record.fileUrl) return record.fileUrl;
+
+    // fallback (if old data exists)
+    if (record.fileName) {
+      return `https://voicemeet.onrender.com/recording/recordings/${record.fileName}`;
+    }
+
+    return "";
   };
 
   return (
@@ -50,47 +58,62 @@ function AdminRecordings() {
 
           <tbody>
 
-            {recordings.map((r) => (
+            {recordings.map((r) => {
 
-              <tr key={r.id}>
+              const audioUrl = getAudioUrl(r);
 
-                {/* ✅ Meeting Name */}
-                <td>{r.meetingName || "N/A"}</td>
+              return (
 
-                {/* ✅ Participants */}
-                <td>
-                  {r.participants
-                    ? r.participants.split(",").join(", ")
-                    : "N/A"}
-                </td>
+                <tr key={r.id}>
 
-                <td>{r.date}</td>
-                <td>{r.time}</td>
+                  {/* Meeting Name */}
+                  <td>{r.meetingName || "N/A"}</td>
 
-                {/* 🎧 PLAY */}
-                <td>
-                  <audio controls style={{ width: "200px" }}>
-                    <source
-                      src={getAudioUrl(r.fileName)}
-                      type="audio/webm"
-                    />
-                    Your browser does not support audio
-                  </audio>
-                </td>
+                  {/* Participants */}
+                  <td>
+                    {r.participants
+                      ? r.participants.split(",").join(", ")
+                      : "N/A"}
+                  </td>
 
-                {/* ⬇ DOWNLOAD */}
-                <td>
-                  <a
-                    href={getAudioUrl(r.fileName)}
-                    download
-                  >
-                    Download
-                  </a>
-                </td>
+                  <td>{r.date}</td>
+                  <td>{r.time}</td>
 
-              </tr>
+                  {/* PLAY */}
+                  <td>
+                    {audioUrl ? (
+                      <audio controls style={{ width: "200px" }}>
+                        <source
+                          src={audioUrl}
+                          type="audio/webm"
+                        />
+                        Your browser does not support audio
+                      </audio>
+                    ) : (
+                      <p>No Audio</p>
+                    )}
+                  </td>
 
-            ))}
+                  {/* DOWNLOAD */}
+                  <td>
+                    {audioUrl ? (
+                      <a
+                        href={audioUrl}
+                        download
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Download
+                      </a>
+                    ) : (
+                      <p>N/A</p>
+                    )}
+                  </td>
+
+                </tr>
+
+              );
+            })}
 
           </tbody>
 
