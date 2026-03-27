@@ -16,13 +16,13 @@ function AdminVoiceRoom() {
 
   const mediaRecorder = useRef(null);
   const recordedChunks = useRef([]);
+  const combinedStream = useRef(new MediaStream()); // 🔥 NEW
 
   const [joined, setJoined] = useState(false);
   const [participants, setParticipants] = useState([]);
   const [isMuted, setIsMuted] = useState(false);
   const [speakerOn, setSpeakerOn] = useState(true);
 
-  // 🔥 Active Speaker
   const [activeSpeaker, setActiveSpeaker] = useState(null);
 
   const configuration = {
@@ -65,9 +65,14 @@ function AdminVoiceRoom() {
       audio: true
     });
 
+    // 🔥 Add admin audio to combined stream
+    localStream.current.getTracks().forEach(track => {
+      combinedStream.current.addTrack(track);
+    });
+
     setParticipants(["admin"]);
 
-    startRecording();
+    startRecording(); // already auto start ✅
 
     stompClient.current.publish({
       destination: "/app/signal",
@@ -87,13 +92,7 @@ function AdminVoiceRoom() {
 
   const startRecording = () => {
 
-    const combinedStream = new MediaStream();
-
-    localStream.current.getTracks().forEach(track => {
-      combinedStream.addTrack(track);
-    });
-
-    mediaRecorder.current = new MediaRecorder(combinedStream);
+    mediaRecorder.current = new MediaRecorder(combinedStream.current);
 
     mediaRecorder.current.ondataavailable = (event) => {
       if (event.data.size > 0) {
@@ -192,17 +191,15 @@ function AdminVoiceRoom() {
       audio.muted = !speakerOn;
       audio.play().catch(() => {});
 
-      // 🔥 Recording add
-      if (mediaRecorder.current) {
-        event.streams[0].getTracks().forEach(track => {
-          try {
-            mediaRecorder.current.stream.addTrack(track);
-          } catch (e) {}
-        });
-      }
+      // 🔥 ADD REMOTE AUDIO TO RECORDING STREAM (FIXED)
+      event.streams[0].getTracks().forEach(track => {
+        try {
+          combinedStream.current.addTrack(track);
+        } catch (e) {}
+      });
 
       ////////////////////////////////////////////////////////
-      // 🔥 SPEAKER DETECTION (FIXED)
+      // SPEAKER DETECTION (UNCHANGED)
       ////////////////////////////////////////////////////////
 
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -267,7 +264,7 @@ function AdminVoiceRoom() {
   };
 
   ////////////////////////////////////////////////////////
-  // CONTROLS
+  // CONTROLS (UNCHANGED)
   ////////////////////////////////////////////////////////
 
   const toggleMute = () => {
@@ -327,12 +324,14 @@ function AdminVoiceRoom() {
       localStream.current.getTracks().forEach(track => track.stop());
     }
 
+    combinedStream.current = new MediaStream(); // 🔥 RESET
+
     setJoined(false);
     setParticipants([]);
   };
 
   ////////////////////////////////////////////////////////
-  // UI
+  // UI (UNCHANGED)
   ////////////////////////////////////////////////////////
 
   return (
