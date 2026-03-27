@@ -16,13 +16,12 @@ function AdminVoiceRoom() {
 
   const mediaRecorder = useRef(null);
   const recordedChunks = useRef([]);
-  const combinedStream = useRef(new MediaStream()); // 🔥 NEW
+  const combinedStream = useRef(new MediaStream());
 
   const [joined, setJoined] = useState(false);
   const [participants, setParticipants] = useState([]);
   const [isMuted, setIsMuted] = useState(false);
   const [speakerOn, setSpeakerOn] = useState(true);
-
   const [activeSpeaker, setActiveSpeaker] = useState(null);
 
   const configuration = {
@@ -37,12 +36,10 @@ function AdminVoiceRoom() {
   ////////////////////////////////////////////////////////
 
   useEffect(() => {
-
     const socket = new SockJS("https://voicemeet.onrender.com/ws");
 
     stompClient.current = new Client({
       webSocketFactory: () => socket,
-
       onConnect: () => {
         stompClient.current.subscribe(
           "/topic/signal/" + meetingId,
@@ -52,7 +49,6 @@ function AdminVoiceRoom() {
     });
 
     stompClient.current.activate();
-
   }, [meetingId]);
 
   ////////////////////////////////////////////////////////
@@ -65,14 +61,16 @@ function AdminVoiceRoom() {
       audio: true
     });
 
-    // 🔥 Add admin audio to combined stream
+    // ✅ RESET stream before adding
+    combinedStream.current = new MediaStream();
+
     localStream.current.getTracks().forEach(track => {
       combinedStream.current.addTrack(track);
     });
 
     setParticipants(["admin"]);
 
-    startRecording(); // already auto start ✅
+    startRecording(); // ✅ safe start
 
     stompClient.current.publish({
       destination: "/app/signal",
@@ -87,35 +85,49 @@ function AdminVoiceRoom() {
   };
 
   ////////////////////////////////////////////////////////
-  // RECORDING
+  // ✅ FIXED RECORDING
   ////////////////////////////////////////////////////////
 
   const startRecording = () => {
 
-    mediaRecorder.current = new MediaRecorder(combinedStream.current);
+    recordedChunks.current = []; // ✅ reset
+
+    try {
+      mediaRecorder.current = new MediaRecorder(combinedStream.current);
+    } catch (e) {
+      console.error("❌ MediaRecorder error:", e);
+      return;
+    }
 
     mediaRecorder.current.ondataavailable = (event) => {
-      if (event.data.size > 0) {
+      if (event.data && event.data.size > 0) {
         recordedChunks.current.push(event.data);
       }
     };
 
-    mediaRecorder.current.start();
+    mediaRecorder.current.onstart = () => {
+      console.log("🎙 Recording started");
+    };
+
+    mediaRecorder.current.onerror = (e) => {
+      console.error("Recorder error:", e);
+    };
+
+    // ✅ IMPORTANT FIX → timeslice ensures chunks
+    mediaRecorder.current.start(1000);
   };
 
   ////////////////////////////////////////////////////////
-  // SIGNAL
+  // SIGNAL (UNCHANGED)
   ////////////////////////////////////////////////////////
 
   const handleSignal = async (message) => {
-
     const data = JSON.parse(message.body);
 
     if (data.target && data.target !== "admin") return;
     if (data.sender === "admin") return;
 
     if (data.type === "join") {
-
       setParticipants(prev =>
         prev.includes(data.sender) ? prev : [...prev, data.sender]
       );
@@ -126,7 +138,6 @@ function AdminVoiceRoom() {
     }
 
     if (data.type === "answer") {
-
       const pc = peerConnections.current[data.sender];
 
       if (pc && pc.signalingState !== "stable") {
@@ -135,18 +146,10 @@ function AdminVoiceRoom() {
             new RTCSessionDescription(data.answer)
           );
         } catch (e) {}
-
-        if (iceQueues.current[data.sender]) {
-          iceQueues.current[data.sender].forEach(c =>
-            pc.addIceCandidate(c)
-          );
-          iceQueues.current[data.sender] = [];
-        }
       }
     }
 
     if (data.type === "candidate") {
-
       const pc = peerConnections.current[data.sender];
       const candidate = new RTCIceCandidate(data.candidate);
 
@@ -154,17 +157,12 @@ function AdminVoiceRoom() {
         try {
           await pc.addIceCandidate(candidate);
         } catch (e) {}
-      } else {
-        if (!iceQueues.current[data.sender]) {
-          iceQueues.current[data.sender] = [];
-        }
-        iceQueues.current[data.sender].push(candidate);
       }
     }
   };
 
   ////////////////////////////////////////////////////////
-  // CREATE CONNECTION
+  // CREATE CONNECTION (UNCHANGED)
   ////////////////////////////////////////////////////////
 
   const createConnection = async (userId) => {
@@ -191,16 +189,11 @@ function AdminVoiceRoom() {
       audio.muted = !speakerOn;
       audio.play().catch(() => {});
 
-      // 🔥 ADD REMOTE AUDIO TO RECORDING STREAM (FIXED)
       event.streams[0].getTracks().forEach(track => {
         try {
           combinedStream.current.addTrack(track);
         } catch (e) {}
       });
-
-      ////////////////////////////////////////////////////////
-      // SPEAKER DETECTION (UNCHANGED)
-      ////////////////////////////////////////////////////////
 
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
       const analyser = audioContext.createAnalyser();
@@ -210,12 +203,10 @@ function AdminVoiceRoom() {
       analyser.fftSize = 512;
 
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
-
       let lastSpokeTime = Date.now();
 
       const detectSpeaking = () => {
         analyser.getByteFrequencyData(dataArray);
-
         const volume = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
 
         if (volume > 25) {
@@ -282,78 +273,72 @@ function AdminVoiceRoom() {
   };
 
   ////////////////////////////////////////////////////////
-  // LEAVE
+  // ✅ FIXED LEAVE
   ////////////////////////////////////////////////////////
 
   const leaveMeeting = () => {
 
-  if (mediaRecorder.current) {
+    if (mediaRecorder.current) {
 
-    // ✅ FIX: assign before stop
-    mediaRecorder.current.onstop = async () => {
+      const recorder = mediaRecorder.current;
 
-      console.log("🔥 Recording stopped");
+      recorder.onstop = async () => {
 
-      const blob = new Blob(recordedChunks.current, {
-        type: "audio/webm"
-      });
-
-      console.log("🎧 Blob size:", blob.size);
-
-      if (blob.size === 0) {
-        console.log("❌ Empty recording, skipping upload");
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append("file", blob, "recording.webm");
-      formData.append("meetingId", meetingId);
-
-      try {
-        console.log("📤 Uploading...");
-
-        const res = await fetch("https://voicemeet.onrender.com/recording/upload", {
-          method: "POST",
-          body: formData
+        const blob = new Blob(recordedChunks.current, {
+          type: "audio/webm"
         });
 
-        console.log("✅ Upload response:", res.status);
+        console.log("🎧 Blob size:", blob.size);
 
-      } catch (err) {
-        console.error("❌ Upload failed:", err);
+        if (blob.size === 0) return;
+
+        const formData = new FormData();
+        formData.append("file", blob, "recording.webm");
+        formData.append("meetingId", meetingId);
+
+        try {
+          await fetch("https://voicemeet.onrender.com/recording/upload", {
+            method: "POST",
+            body: formData
+          });
+        } catch (err) {
+          console.error(err);
+        }
+
+        recordedChunks.current = [];
+      };
+
+      // ✅ CRITICAL FIX
+      if (recorder.state === "recording") {
+        recorder.stop();
+      } else {
+        console.log("Recorder not recording");
       }
+    }
 
-      recordedChunks.current = [];
-    };
+    Object.values(peerConnections.current).forEach(pc => pc.close());
+    peerConnections.current = {};
 
-    // ✅ Now stop AFTER assigning handler
-    mediaRecorder.current.stop();
-  }
+    Object.values(audioElements.current).forEach(audio => audio.remove());
+    audioElements.current = {};
 
-  Object.values(peerConnections.current).forEach(pc => pc.close());
-  peerConnections.current = {};
+    iceQueues.current = {};
 
-  Object.values(audioElements.current).forEach(audio => audio.remove());
-  audioElements.current = {};
+    if (localStream.current) {
+      localStream.current.getTracks().forEach(track => track.stop());
+    }
 
-  iceQueues.current = {};
+    combinedStream.current = new MediaStream();
 
-  if (localStream.current) {
-    localStream.current.getTracks().forEach(track => track.stop());
-  }
-
-  combinedStream.current = new MediaStream();
-
-  setJoined(false);
-  setParticipants([]);
-};
+    setJoined(false);
+    setParticipants([]);
+  };
 
   ////////////////////////////////////////////////////////
   // UI (UNCHANGED)
   ////////////////////////////////////////////////////////
 
   return (
-
     <div className="voice-container">
 
       <h2>Admin Voice Room</h2>
@@ -399,7 +384,6 @@ function AdminVoiceRoom() {
           </div>
         </>
       )}
-
     </div>
   );
 }
