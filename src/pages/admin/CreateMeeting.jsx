@@ -7,6 +7,7 @@ export default function CreateMeeting() {
 
   const [meetingName, setMeetingName] = useState("");
   const [allUsers, setAllUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   // 🔥 Fetch all users automatically
   useEffect(() => {
@@ -17,16 +18,18 @@ export default function CreateMeeting() {
     try {
       const token = localStorage.getItem("token");
 
-      const res = await API.get("/users", {
+      const res = await API.get("/user/all", {   // ✅ FIXED HERE
         headers: {
           Authorization: "Bearer " + token
         }
       });
 
+      console.log("Users:", res.data);
+
       setAllUsers(res.data);
 
     } catch (err) {
-      console.error(err);
+      console.error("Fetch Users Error:", err.response || err);
       alert("Failed to fetch users");
     }
   };
@@ -44,6 +47,7 @@ export default function CreateMeeting() {
     }
 
     try {
+      setLoading(true);
 
       // 1️⃣ Create meeting
       const res = await API.post(
@@ -52,14 +56,14 @@ export default function CreateMeeting() {
 
       const meetingId = res.data.meetingId;
 
-      // 2️⃣ Invite ALL users automatically
+      // 2️⃣ Invite ALL users
       for (let user of allUsers) {
 
         await API.post(
           "/meeting/invite",
           {
             meetingId: meetingId,
-            userId: user.username || user.userId // adjust based on your backend
+            userId: user.userId   // ✅ IMPORTANT FIX
           },
           {
             headers: {
@@ -76,9 +80,11 @@ export default function CreateMeeting() {
 
     } catch (err) {
 
-      console.error(err);
+      console.error("Create Meeting Error:", err.response || err);
       alert("Error creating meeting");
 
+    } finally {
+      setLoading(false);
     }
 
   };
@@ -104,10 +110,8 @@ export default function CreateMeeting() {
             />
           </div>
 
-          {/* ❌ Removed manual user input */}
-
-          <button type="submit" className="meeting-btn">
-            Create & Invite All Users 🚀
+          <button type="submit" className="meeting-btn" disabled={loading}>
+            {loading ? "Creating..." : "Create & Invite All Users 🚀"}
           </button>
 
         </form>
