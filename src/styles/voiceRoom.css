@@ -61,3 +61,33 @@
  border-radius:6px;
  color:white;
 }
+
+
+/* 🔥 Active speaker highlight */
+.participant.speaking {
+  border: 3px solid #00ff88;
+  box-shadow: 0 0 15px #00ff88;
+  transform: scale(1.05);
+}
+
+/* 🔥 Speaker Button */
+.speaker-btn {
+  padding: 12px 20px;
+  margin-left: 10px;
+  border-radius: 6px;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* ON */
+.speaker-btn.on {
+  background: #28a745;
+  color: white;
+}
+
+/* OFF */
+.speaker-btn.off {
+  background: #f44336;
+  color: white;
+}

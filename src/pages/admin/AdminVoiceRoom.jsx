@@ -23,6 +23,9 @@ function AdminVoiceRoom() {
   const [isMuted, setIsMuted] = useState(false);
   const [speakerOn, setSpeakerOn] = useState(true);
 
+  // 🔥 NEW STATE (ACTIVE SPEAKER)
+  const [activeSpeaker, setActiveSpeaker] = useState(null);
+
   const configuration = {
     iceServers: [
       { urls: "stun:stun.l.google.com:19302" },
@@ -65,10 +68,6 @@ function AdminVoiceRoom() {
 
     setParticipants(["admin"]);
 
-    ////////////////////////////////////////////////////////
-    // 🔥 START RECORDING (ADMIN MIC FIRST)
-    ////////////////////////////////////////////////////////
-
     startRecording();
 
     stompClient.current.publish({
@@ -84,14 +83,13 @@ function AdminVoiceRoom() {
   };
 
   ////////////////////////////////////////////////////////
-  // 🔥 START RECORDING FUNCTION
+  // RECORDING
   ////////////////////////////////////////////////////////
 
   const startRecording = () => {
 
     const combinedStream = new MediaStream();
 
-    // add admin audio
     localStream.current.getTracks().forEach(track => {
       combinedStream.addTrack(track);
     });
@@ -138,9 +136,7 @@ function AdminVoiceRoom() {
           await pc.setRemoteDescription(
             new RTCSessionDescription(data.answer)
           );
-        } catch (e) {
-          console.warn(e);
-        }
+        } catch (e) {}
 
         if (iceQueues.current[data.sender]) {
           iceQueues.current[data.sender].forEach(c =>
@@ -182,10 +178,6 @@ function AdminVoiceRoom() {
       pc.addTrack(track, localStream.current);
     });
 
-    ////////////////////////////////////////////////////////
-    // RECEIVE AUDIO
-    ////////////////////////////////////////////////////////
-
     pc.ontrack = (event) => {
 
       if (!audioElements.current[userId]) {
@@ -215,6 +207,33 @@ function AdminVoiceRoom() {
           } catch (e) {}
         });
       }
+
+      ////////////////////////////////////////////////////////
+      // 🔥 SPEAKER DETECTION
+      ////////////////////////////////////////////////////////
+
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const analyser = audioContext.createAnalyser();
+      const source = audioContext.createMediaStreamSource(event.streams[0]);
+
+      source.connect(analyser);
+      analyser.fftSize = 512;
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+      const detectSpeaking = () => {
+        analyser.getByteFrequencyData(dataArray);
+
+        const volume = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+
+        if (volume > 20) {
+          setActiveSpeaker(userId);
+        }
+
+        requestAnimationFrame(detectSpeaking);
+      };
+
+      detectSpeaking();
     };
 
     pc.onicecandidate = (event) => {
@@ -268,7 +287,7 @@ function AdminVoiceRoom() {
   };
 
   ////////////////////////////////////////////////////////
-  // LEAVE (STOP RECORDING + UPLOAD)
+  // LEAVE
   ////////////////////////////////////////////////////////
 
   const leaveMeeting = () => {
@@ -288,18 +307,11 @@ function AdminVoiceRoom() {
         formData.append("meetingId", meetingId);
 
         try {
-
           await fetch("https://voicemeet.onrender.com/recording/upload", {
             method: "POST",
             body: formData
           });
-
-          console.log("Recording uploaded");
-
-        } catch (err) {
-          console.error("Upload failed", err);
-        }
-
+        } catch (err) {}
         recordedChunks.current = [];
       };
     }
@@ -342,7 +354,10 @@ function AdminVoiceRoom() {
 
           <div className="participants-grid">
             {participants.map((p) => (
-              <div key={p} className="participant">
+              <div
+                key={p}
+                className={`participant ${activeSpeaker === p ? "speaking" : ""}`}
+              >
                 <div className="avatar">
                   {p.charAt(0).toUpperCase()}
                 </div>
@@ -353,15 +368,18 @@ function AdminVoiceRoom() {
 
           <div className="controls">
 
-            <button onClick={toggleMute}>
+            <button className="mute-btn" onClick={toggleMute}>
               {isMuted ? "🔇 Unmute" : "🎤 Mute"}
             </button>
 
-            <button onClick={toggleSpeaker}>
-              {speakerOn ? "🔊 Speaker Off" : "🔊 Speaker On"}
+            <button
+              onClick={toggleSpeaker}
+              className={`speaker-btn ${speakerOn ? "on" : "off"}`}
+            >
+              {speakerOn ? "🔊 ON" : "🔇 OFF"}
             </button>
 
-            <button onClick={leaveMeeting}>
+            <button className="leave-btn" onClick={leaveMeeting}>
               📞 Leave
             </button>
 
