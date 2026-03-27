@@ -1,12 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import SockJS from "sockjs-client";
 import { Client } from "@stomp/stompjs";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 function UserVoiceRoom() {
 
   const { meetingId } = useParams();
-  const navigate = useNavigate();
 
   const stompClient = useRef(null);
   const localStream = useRef(null);
@@ -15,6 +14,7 @@ function UserVoiceRoom() {
 
   const userId = localStorage.getItem("userId") || "user";
 
+  // 🔥 TURN + STUN
   const configuration = {
     iceServers: [
       { urls: "stun:stun.l.google.com:19302" },
@@ -29,19 +29,6 @@ function UserVoiceRoom() {
 
   const [joined, setJoined] = useState(false);
   const [speakerOn, setSpeakerOn] = useState(true);
-
-  ////////////////////////////////////////////////////////
-  // 🔄 AUTO REJOIN
-  ////////////////////////////////////////////////////////
-
-  useEffect(() => {
-    const savedMeeting = localStorage.getItem("activeMeeting");
-
-    if (savedMeeting === meetingId) {
-      console.log("Rejoining meeting...");
-      joinMeeting(true);
-    }
-  }, []);
 
   ////////////////////////////////////////////////////////
   // SOCKET CONNECT
@@ -72,22 +59,16 @@ function UserVoiceRoom() {
   // JOIN
   ////////////////////////////////////////////////////////
 
-  const joinMeeting = async (isRejoin = false) => {
+  const joinMeeting = async () => {
 
-    if (!localStream.current) {
-      localStream.current = await navigator.mediaDevices.getUserMedia({
-        audio: true
-      });
+    localStream.current = await navigator.mediaDevices.getUserMedia({
+      audio: true
+    });
 
-      // 🔥 Start MUTED (your logic preserved)
-      localStream.current.getAudioTracks().forEach(track => {
-        track.enabled = false;
-      });
-    }
-
-    if (!isRejoin) {
-      localStorage.setItem("activeMeeting", meetingId);
-    }
+    // 🔥 Start MUTED
+    localStream.current.getAudioTracks().forEach(track => {
+      track.enabled = false;
+    });
 
     stompClient.current.publish({
       destination: "/app/signal",
@@ -168,7 +149,10 @@ function UserVoiceRoom() {
       peerConnection.current.addTrack(track, localStream.current);
     });
 
+    // 🔥 RECEIVE AUDIO
     peerConnection.current.ontrack = (event) => {
+
+      console.log("REMOTE STREAM RECEIVED");
 
       const audio = document.createElement("audio");
 
@@ -176,11 +160,15 @@ function UserVoiceRoom() {
       audio.autoplay = true;
       audio.playsInline = true;
       audio.muted = !speakerOn;
+      audio.volume = 1.0;
 
       document.body.appendChild(audio);
+
       audioRef.current = audio;
 
-      audio.play().catch(() => {});
+      audio.play().catch(err => {
+        console.log("Autoplay blocked:", err);
+      });
     };
 
     peerConnection.current.onicecandidate = (event) => {
@@ -201,19 +189,25 @@ function UserVoiceRoom() {
   };
 
   ////////////////////////////////////////////////////////
-  // 🎤 PUSH TO TALK (UNCHANGED)
+  // 🔥 PUSH TO TALK
   ////////////////////////////////////////////////////////
 
   const handleSpeakStart = () => {
-    localStream.current?.getAudioTracks().forEach(t => t.enabled = true);
+    if (!localStream.current) return;
+    localStream.current.getAudioTracks().forEach(track => {
+      track.enabled = true;
+    });
   };
 
   const handleSpeakEnd = () => {
-    localStream.current?.getAudioTracks().forEach(t => t.enabled = false);
+    if (!localStream.current) return;
+    localStream.current.getAudioTracks().forEach(track => {
+      track.enabled = false;
+    });
   };
 
   ////////////////////////////////////////////////////////
-  // 🔊 SPEAKER
+  // SPEAKER CONTROL
   ////////////////////////////////////////////////////////
 
   const toggleSpeaker = () => {
@@ -224,34 +218,24 @@ function UserVoiceRoom() {
   };
 
   ////////////////////////////////////////////////////////
-  // 🔴 LOGOUT
-  ////////////////////////////////////////////////////////
-
-  const handleLogout = () => {
-
-    leaveMeeting();
-
-    localStorage.removeItem("userId");
-    localStorage.removeItem("activeMeeting");
-
-    navigate("/login"); // change if needed
-  };
-
-  ////////////////////////////////////////////////////////
   // LEAVE
   ////////////////////////////////////////////////////////
 
   const leaveMeeting = () => {
 
-    localStorage.removeItem("activeMeeting");
+    if (peerConnection.current) {
+      peerConnection.current.close();
+      peerConnection.current = null;
+    }
 
-    peerConnection.current?.close();
-    peerConnection.current = null;
+    if (audioRef.current) {
+      audioRef.current.remove();
+      audioRef.current = null;
+    }
 
-    audioRef.current?.remove();
-    audioRef.current = null;
-
-    localStream.current?.getTracks().forEach(t => t.stop());
+    if (localStream.current) {
+      localStream.current.getTracks().forEach(track => track.stop());
+    }
 
     setJoined(false);
   };
@@ -267,28 +251,23 @@ function UserVoiceRoom() {
       fontFamily: "Segoe UI"
     }}>
 
-      {/* 🔴 LOGOUT */}
-      <div style={{ position: "absolute", top: 20, right: 20 }}>
-        <button
-          onClick={handleLogout}
-          style={{
-            background: "#ff4d4d",
-            color: "#fff",
-            padding: "8px 16px",
-            border: "none",
-            borderRadius: "8px"
-          }}
-        >
-          Logout
-        </button>
-      </div>
-
       <h2>User Voice Room</h2>
       <p style={{ color: "#666" }}>Meeting ID: {meetingId}</p>
 
       {!joined ? (
 
-        <button onClick={() => joinMeeting()}>
+        <button
+          style={{
+            padding: "12px 20px",
+            borderRadius: "8px",
+            border: "none",
+            background: "#4CAF50",
+            color: "white",
+            fontWeight: "bold",
+            cursor: "pointer"
+          }}
+          onClick={joinMeeting}
+        >
           Join Meeting
         </button>
 
@@ -301,6 +280,7 @@ function UserVoiceRoom() {
 
           <div style={{ marginTop: "30px" }}>
 
+            {/* 🎤 PUSH TO TALK */}
             <button
               style={{
                 background: "#2196F3",
@@ -310,7 +290,8 @@ function UserVoiceRoom() {
                 borderRadius: "12px",
                 fontSize: "18px",
                 fontWeight: "bold",
-                cursor: "pointer"
+                cursor: "pointer",
+                boxShadow: "0 4px 10px rgba(0,0,0,0.2)"
               }}
               onMouseDown={handleSpeakStart}
               onMouseUp={handleSpeakEnd}
@@ -323,18 +304,41 @@ function UserVoiceRoom() {
 
             <br /><br />
 
-            <button onClick={toggleSpeaker}>
-              {speakerOn ? "🔊 ON" : "🔇 OFF"}
+            {/* 🔊 Speaker */}
+            <button
+              style={{
+                padding: "10px 20px",
+                borderRadius: "8px",
+                border: "none",
+                background: speakerOn ? "#28a745" : "#6c757d",
+                color: "white",
+                cursor: "pointer"
+              }}
+              onClick={toggleSpeaker}
+            >
+              {speakerOn ? "🔊 Speaker ON" : "🔇 Speaker OFF"}
             </button>
 
             <br /><br />
 
-            <button onClick={leaveMeeting}>
+            {/* 📞 Leave */}
+            <button
+              style={{
+                padding: "10px 20px",
+                borderRadius: "8px",
+                border: "none",
+                background: "#f44336",
+                color: "white",
+                cursor: "pointer"
+              }}
+              onClick={leaveMeeting}
+            >
               📞 Leave
             </button>
 
           </div>
         </>
+
       )}
 
     </div>
