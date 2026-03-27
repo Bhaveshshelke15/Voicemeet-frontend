@@ -1,11 +1,35 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import API from "../../api/api";
 import "../../styles/createMeeting.css";
 
 export default function CreateMeeting() {
 
   const [meetingName, setMeetingName] = useState("");
-  const [userIds, setUserIds] = useState("");
+  const [allUsers, setAllUsers] = useState([]);
+
+  // 🔥 Fetch all users automatically
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await API.get("/users", {
+        headers: {
+          Authorization: "Bearer " + token
+        }
+      });
+
+      setAllUsers(res.data);
+
+    } catch (err) {
+      console.error(err);
+      alert("Failed to fetch users");
+    }
+  };
 
   const handleSubmit = async (e) => {
 
@@ -14,7 +38,7 @@ export default function CreateMeeting() {
     const adminUsername = localStorage.getItem("username");
     const token = localStorage.getItem("token");
 
-    if(!adminUsername){
+    if (!adminUsername) {
       alert("Please login again");
       return;
     }
@@ -28,19 +52,17 @@ export default function CreateMeeting() {
 
       const meetingId = res.data.meetingId;
 
-      // 2️⃣ Invite users
-      const users = userIds.split(",");
-
-      for(let user of users){
+      // 2️⃣ Invite ALL users automatically
+      for (let user of allUsers) {
 
         await API.post(
           "/meeting/invite",
           {
             meetingId: meetingId,
-            userId: user.trim()
+            userId: user.username || user.userId // adjust based on your backend
           },
           {
-            headers:{
+            headers: {
               Authorization: "Bearer " + token
             }
           }
@@ -48,12 +70,11 @@ export default function CreateMeeting() {
 
       }
 
-      alert("Meeting created and users invited");
+      alert("Meeting created and all users invited ✅");
 
       setMeetingName("");
-      setUserIds("");
 
-    } catch(err){
+    } catch (err) {
 
       console.error(err);
       alert("Error creating meeting");
@@ -62,7 +83,7 @@ export default function CreateMeeting() {
 
   };
 
-  return(
+  return (
 
     <div className="create-meeting-page">
 
@@ -78,23 +99,15 @@ export default function CreateMeeting() {
               type="text"
               placeholder="Enter meeting name"
               value={meetingName}
-              onChange={(e)=>setMeetingName(e.target.value)}
+              onChange={(e) => setMeetingName(e.target.value)}
               required
             />
           </div>
 
-          <div className="form-group">
-            <label>Invite Users</label>
-            <input
-              type="text"
-              placeholder="Enter User IDs separated by comma"
-              value={userIds}
-              onChange={(e)=>setUserIds(e.target.value)}
-            />
-          </div>
+          {/* ❌ Removed manual user input */}
 
           <button type="submit" className="meeting-btn">
-            Create Meeting & Invite
+            Create & Invite All Users 🚀
           </button>
 
         </form>
@@ -105,3 +118,4 @@ export default function CreateMeeting() {
 
   );
 }
+
