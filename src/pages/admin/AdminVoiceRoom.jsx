@@ -90,18 +90,23 @@ function AdminVoiceRoom() {
   // RECORDING
   ////////////////////////////////////////////////////////
 
-  const startRecording = () => {
+ const startRecording = () => {
 
-    mediaRecorder.current = new MediaRecorder(combinedStream.current);
+  recordedChunks.current = []; // ✅ reset
 
-    mediaRecorder.current.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        recordedChunks.current.push(event.data);
-      }
-    };
+  mediaRecorder.current = new MediaRecorder(combinedStream.current);
 
-    mediaRecorder.current.start();
+  mediaRecorder.current.ondataavailable = (event) => {
+    if (event.data && event.data.size > 0) {
+      recordedChunks.current.push(event.data);
+    }
   };
+
+  // ✅ IMPORTANT: timeslice = 1000ms
+  mediaRecorder.current.start(1000);
+
+  console.log("🎙 Recording started");
+};
 
   ////////////////////////////////////////////////////////
   // SIGNAL
@@ -287,48 +292,50 @@ function AdminVoiceRoom() {
 
   const leaveMeeting = () => {
 
-  if (mediaRecorder.current) {
+ if (mediaRecorder.current) {
 
-    // ✅ FIX: assign before stop
-    mediaRecorder.current.onstop = async () => {
+  mediaRecorder.current.onstop = async () => {
 
-      console.log("🔥 Recording stopped");
+    console.log("🔥 Recording stopped");
 
-      const blob = new Blob(recordedChunks.current, {
-        type: "audio/webm"
+    const blob = new Blob(recordedChunks.current, {
+      type: "audio/webm"
+    });
+
+    console.log("🎧 Blob size:", blob.size);
+
+    if (blob.size === 0) {
+      console.log("❌ Empty recording, skipping upload");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", blob, "recording.webm");
+    formData.append("meetingId", meetingId);
+
+    try {
+      console.log("📤 Uploading...");
+
+      const res = await fetch("https://voicemeet.onrender.com/recording/upload", {
+        method: "POST",
+        body: formData
       });
 
-      console.log("🎧 Blob size:", blob.size);
+      console.log("✅ Upload response:", res.status);
 
-      if (blob.size === 0) {
-        console.log("❌ Empty recording, skipping upload");
-        return;
-      }
+    } catch (err) {
+      console.error("❌ Upload failed:", err);
+    }
 
-      const formData = new FormData();
-      formData.append("file", blob, "recording.webm");
-      formData.append("meetingId", meetingId);
+    recordedChunks.current = [];
+  };
 
-      try {
-        console.log("📤 Uploading...");
+  // ✅ IMPORTANT: force last chunk
+  mediaRecorder.current.requestData();
 
-        const res = await fetch("https://voicemeet.onrender.com/recording/upload", {
-          method: "POST",
-          body: formData
-        });
-
-        console.log("✅ Upload response:", res.status);
-
-      } catch (err) {
-        console.error("❌ Upload failed:", err);
-      }
-
-      recordedChunks.current = [];
-    };
-
-    // ✅ Now stop AFTER assigning handler
-    mediaRecorder.current.stop();
-  }
+  // ✅ THEN stop
+  mediaRecorder.current.stop();
+}
 
   Object.values(peerConnections.current).forEach(pc => pc.close());
   peerConnections.current = {};
