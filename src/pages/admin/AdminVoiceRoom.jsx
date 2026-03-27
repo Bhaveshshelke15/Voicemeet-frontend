@@ -395,6 +395,17 @@ function AdminVoiceRoom() {
 
     setJoined(false);
     setParticipants([]);
+
+    stompClient.current.publish({
+  destination: "/app/signal",
+  body: JSON.stringify({
+    type: "leave",
+    meetingId,
+    sender: "admin"
+  })
+});
+
+    
   };
 
   ////////////////////////////////////////////////////////
