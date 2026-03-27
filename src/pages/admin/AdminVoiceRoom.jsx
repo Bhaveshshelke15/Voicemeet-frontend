@@ -18,6 +18,10 @@ function AdminVoiceRoom() {
   const recordedChunks = useRef([]);
   const combinedStream = useRef(new MediaStream());
 
+  // 🔥 NEW (Audio Mixer)
+  const audioContextRef = useRef(null);
+  const destinationRef = useRef(null);
+
   const [joined, setJoined] = useState(false);
   const [participants, setParticipants] = useState([]);
   const [isMuted, setIsMuted] = useState(false);
@@ -61,16 +65,19 @@ function AdminVoiceRoom() {
       audio: true
     });
 
-    // ✅ RESET stream before adding
-    combinedStream.current = new MediaStream();
+    // 🔥 AUDIO MIXER SETUP
+    audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    destinationRef.current = audioContextRef.current.createMediaStreamDestination();
 
-    localStream.current.getTracks().forEach(track => {
-      combinedStream.current.addTrack(track);
-    });
+    // Add admin audio
+    const source = audioContextRef.current.createMediaStreamSource(localStream.current);
+    source.connect(destinationRef.current);
+
+    combinedStream.current = destinationRef.current.stream;
 
     setParticipants(["admin"]);
 
-    startRecording(); // ✅ safe start
+    startRecording();
 
     stompClient.current.publish({
       destination: "/app/signal",
@@ -85,12 +92,12 @@ function AdminVoiceRoom() {
   };
 
   ////////////////////////////////////////////////////////
-  // ✅ FIXED RECORDING
+  // RECORDING
   ////////////////////////////////////////////////////////
 
   const startRecording = () => {
 
-    recordedChunks.current = []; // ✅ reset
+    recordedChunks.current = [];
 
     try {
       mediaRecorder.current = new MediaRecorder(combinedStream.current);
@@ -110,15 +117,14 @@ function AdminVoiceRoom() {
     };
 
     mediaRecorder.current.onerror = (e) => {
-      console.error("Recorder error:", e);
+      console.error("Recorder error FULL:", e);
     };
 
-    // ✅ IMPORTANT FIX → timeslice ensures chunks
     mediaRecorder.current.start(1000);
   };
 
   ////////////////////////////////////////////////////////
-  // SIGNAL (UNCHANGED)
+  // SIGNAL
   ////////////////////////////////////////////////////////
 
   const handleSignal = async (message) => {
@@ -162,7 +168,7 @@ function AdminVoiceRoom() {
   };
 
   ////////////////////////////////////////////////////////
-  // CREATE CONNECTION (UNCHANGED)
+  // CREATE CONNECTION
   ////////////////////////////////////////////////////////
 
   const createConnection = async (userId) => {
@@ -189,12 +195,15 @@ function AdminVoiceRoom() {
       audio.muted = !speakerOn;
       audio.play().catch(() => {});
 
-      event.streams[0].getTracks().forEach(track => {
-        try {
-          combinedStream.current.addTrack(track);
-        } catch (e) {}
-      });
+      // 🔥 ADD TO MIXER (NO CRASH)
+      try {
+        const remoteSource = audioContextRef.current.createMediaStreamSource(event.streams[0]);
+        remoteSource.connect(destinationRef.current);
+      } catch (e) {
+        console.log("Audio mix error:", e);
+      }
 
+      // SPEAKER DETECTION (unchanged)
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
       const analyser = audioContext.createAnalyser();
       const source = audioContext.createMediaStreamSource(event.streams[0]);
@@ -255,7 +264,7 @@ function AdminVoiceRoom() {
   };
 
   ////////////////////////////////////////////////////////
-  // CONTROLS (UNCHANGED)
+  // CONTROLS
   ////////////////////////////////////////////////////////
 
   const toggleMute = () => {
@@ -273,97 +282,80 @@ function AdminVoiceRoom() {
   };
 
   ////////////////////////////////////////////////////////
-  // ✅ FIXED LEAVE
+  // LEAVE
   ////////////////////////////////////////////////////////
 
   const leaveMeeting = async () => {
 
-  if (mediaRecorder.current) {
+    if (mediaRecorder.current) {
 
-    const recorder = mediaRecorder.current;
+      const recorder = mediaRecorder.current;
 
-    const uploadPromise = new Promise((resolve) => {
+      const uploadPromise = new Promise((resolve) => {
 
-      recorder.onstop = async () => {
+        recorder.onstop = async () => {
 
-        const blob = new Blob(recordedChunks.current, {
-          type: "audio/webm"
-        });
+          const blob = new Blob(recordedChunks.current, {
+            type: "audio/webm"
+          });
 
-        console.log("🎧 Blob size:", blob.size);
+          console.log("🎧 Blob size:", blob.size);
 
-        if (blob.size === 0) {
+          if (blob.size === 0) {
+            resolve();
+            return;
+          }
+
+          const formData = new FormData();
+          formData.append("file", blob, "recording.webm");
+          formData.append("meetingId", meetingId);
+
+          try {
+            const res = await fetch(
+              "https://voicemeet.onrender.com/recording/upload",
+              {
+                method: "POST",
+                body: formData
+              }
+            );
+
+            console.log("✅ Upload response:", await res.text());
+          } catch (err) {
+            console.error("❌ Upload failed:", err);
+          }
+
+          recordedChunks.current = [];
           resolve();
-          return;
-        }
+        };
+      });
 
-        const formData = new FormData();
-        formData.append("file", blob, "recording.webm");
-        formData.append("meetingId", meetingId);
-
-        try {
-          const res = await fetch(
-            "https://voicemeet.onrender.com/recording/upload",
-            {
-              method: "POST",
-              body: formData
-            }
-          );
-
-          console.log("✅ Upload response:", await res.text());
-        } catch (err) {
-          console.error("❌ Upload failed:", err);
-        }
-
-        recordedChunks.current = [];
-        resolve(); // ✅ VERY IMPORTANT
-      };
-    });
-
-    if (recorder.state === "recording") {
-      recorder.stop();
-      await uploadPromise; // ✅ WAIT HERE
+      if (recorder.state === "recording") {
+        recorder.stop();
+        await uploadPromise;
+      }
     }
-  }
 
-  // ✅ CLEANUP AFTER upload finishes
+    // CLEANUP
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+    }
 
-  Object.values(peerConnections.current).forEach(pc => pc.close());
-  peerConnections.current = {};
+    Object.values(peerConnections.current).forEach(pc => pc.close());
+    peerConnections.current = {};
 
-  Object.values(audioElements.current).forEach(audio => audio.remove());
-  audioElements.current = {};
+    Object.values(audioElements.current).forEach(audio => audio.remove());
+    audioElements.current = {};
 
-  iceQueues.current = {};
+    if (localStream.current) {
+      localStream.current.getTracks().forEach(track => track.stop());
+    }
 
-  if (localStream.current) {
-    localStream.current.getTracks().forEach(track => track.stop());
-  }
+    combinedStream.current = new MediaStream();
 
-  event.streams[0].getTracks().forEach(track => {
+    setJoined(false);
+    setParticipants([]);
+  };
 
-  try {
-    combinedStream.current.addTrack(track);
-  } catch (e) {
-    console.log("Track already exists");
-  }
-
-});
-
-// 🔥 RESTART RECORDING
-if (mediaRecorder.current && mediaRecorder.current.state === "recording") {
-
-  console.log("🔁 Restarting recorder due to new participant");
-
-  mediaRecorder.current.stop();
-
-  setTimeout(() => {
-    startRecording();
-  }, 500);
-}
-  setJoined(false);
-  setParticipants([]);
-};
   ////////////////////////////////////////////////////////
   // UI (UNCHANGED)
   ////////////////////////////////////////////////////////
