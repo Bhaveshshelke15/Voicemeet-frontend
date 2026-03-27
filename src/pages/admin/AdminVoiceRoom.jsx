@@ -20,6 +20,9 @@ function AdminVoiceRoom() {
   const audioContextRef = useRef(null);
   const destinationRef = useRef(null);
 
+  // 🔥 NEW
+  const hasRemoteJoined = useRef(false);
+
   const [joined, setJoined] = useState(false);
   const [participants, setParticipants] = useState([]);
   const [isMuted, setIsMuted] = useState(false);
@@ -63,7 +66,7 @@ function AdminVoiceRoom() {
       audio: true
     });
 
-    // AUDIO MIXER SETUP
+    // AUDIO MIXER
     audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
     destinationRef.current = audioContextRef.current.createMediaStreamDestination();
 
@@ -198,7 +201,7 @@ function AdminVoiceRoom() {
       audio.muted = !speakerOn;
       audio.play().catch(() => {});
 
-      // SAFE AUDIO MIX
+      // AUDIO MIX
       if (
         audioContextRef.current &&
         audioContextRef.current.state !== "closed"
@@ -212,7 +215,22 @@ function AdminVoiceRoom() {
         }
       }
 
-      // SPEAKER DETECTION (unchanged)
+      // 🔥 FIX → Restart recorder when first user joins
+      if (!hasRemoteJoined.current) {
+        hasRemoteJoined.current = true;
+
+        console.log("👥 Remote joined → restarting recorder");
+
+        if (mediaRecorder.current && mediaRecorder.current.state === "recording") {
+          mediaRecorder.current.stop();
+
+          setTimeout(() => {
+            startRecording();
+          }, 500);
+        }
+      }
+
+      // SPEAKER DETECTION
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
       const analyser = audioContext.createAnalyser();
       const source = audioContext.createMediaStreamSource(event.streams[0]);
@@ -350,6 +368,9 @@ function AdminVoiceRoom() {
         await uploadPromise;
       }
     }
+
+    // RESET FLAG
+    hasRemoteJoined.current = false;
 
     // CLEANUP
     if (audioContextRef.current && audioContextRef.current.state !== "closed") {
