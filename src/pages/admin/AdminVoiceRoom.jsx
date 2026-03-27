@@ -16,19 +16,17 @@ function AdminVoiceRoom() {
 
   const mediaRecorder = useRef(null);
   const recordedChunks = useRef([]);
-  const combinedStream = useRef(new MediaStream()); // 🔥 NEW
+  const combinedStream = useRef(new MediaStream());
 
   const [joined, setJoined] = useState(false);
   const [participants, setParticipants] = useState([]);
   const [isMuted, setIsMuted] = useState(false);
   const [speakerOn, setSpeakerOn] = useState(true);
-
   const [activeSpeaker, setActiveSpeaker] = useState(null);
 
   const configuration = {
     iceServers: [
-      { urls: "stun:stun.l.google.com:19302" },
-      { urls: "stun:stun1.l.google.com:19302" }
+      { urls: "stun:stun.l.google.com:19302" }
     ]
   };
 
@@ -65,14 +63,16 @@ function AdminVoiceRoom() {
       audio: true
     });
 
-    // 🔥 Add admin audio to combined stream
+    // ✅ Reset combined stream
+    combinedStream.current = new MediaStream();
+
     localStream.current.getTracks().forEach(track => {
       combinedStream.current.addTrack(track);
     });
 
     setParticipants(["admin"]);
 
-    startRecording(); // already auto start ✅
+    startRecording(); // ✅ start recording
 
     stompClient.current.publish({
       destination: "/app/signal",
@@ -90,23 +90,34 @@ function AdminVoiceRoom() {
   // RECORDING
   ////////////////////////////////////////////////////////
 
- const startRecording = () => {
+  const startRecording = () => {
 
-  recordedChunks.current = []; // ✅ reset
+    recordedChunks.current = [];
 
-  mediaRecorder.current = new MediaRecorder(combinedStream.current);
-
-  mediaRecorder.current.ondataavailable = (event) => {
-    if (event.data && event.data.size > 0) {
-      recordedChunks.current.push(event.data);
+    try {
+      mediaRecorder.current = new MediaRecorder(combinedStream.current);
+    } catch (e) {
+      console.error("❌ MediaRecorder not supported", e);
+      return;
     }
+
+    mediaRecorder.current.ondataavailable = (event) => {
+      if (event.data && event.data.size > 0) {
+        recordedChunks.current.push(event.data);
+      }
+    };
+
+    mediaRecorder.current.onstart = () => {
+      console.log("🎙 Recording started");
+    };
+
+    mediaRecorder.current.onerror = (e) => {
+      console.error("Recorder error:", e);
+    };
+
+    // ✅ timeslice FIX
+    mediaRecorder.current.start(1000);
   };
-
-  // ✅ IMPORTANT: timeslice = 1000ms
-  mediaRecorder.current.start(1000);
-
-  console.log("🎙 Recording started");
-};
 
   ////////////////////////////////////////////////////////
   // SIGNAL
@@ -140,13 +151,6 @@ function AdminVoiceRoom() {
             new RTCSessionDescription(data.answer)
           );
         } catch (e) {}
-
-        if (iceQueues.current[data.sender]) {
-          iceQueues.current[data.sender].forEach(c =>
-            pc.addIceCandidate(c)
-          );
-          iceQueues.current[data.sender] = [];
-        }
       }
     }
 
@@ -159,11 +163,6 @@ function AdminVoiceRoom() {
         try {
           await pc.addIceCandidate(candidate);
         } catch (e) {}
-      } else {
-        if (!iceQueues.current[data.sender]) {
-          iceQueues.current[data.sender] = [];
-        }
-        iceQueues.current[data.sender].push(candidate);
       }
     }
   };
@@ -186,7 +185,6 @@ function AdminVoiceRoom() {
       if (!audioElements.current[userId]) {
         const audio = document.createElement("audio");
         audio.autoplay = true;
-        audio.playsInline = true;
         document.body.appendChild(audio);
         audioElements.current[userId] = audio;
       }
@@ -194,48 +192,11 @@ function AdminVoiceRoom() {
       const audio = audioElements.current[userId];
       audio.srcObject = event.streams[0];
       audio.muted = !speakerOn;
-      audio.play().catch(() => {});
 
-      // 🔥 ADD REMOTE AUDIO TO RECORDING STREAM (FIXED)
+      // ✅ Add remote audio to recording
       event.streams[0].getTracks().forEach(track => {
-        try {
-          combinedStream.current.addTrack(track);
-        } catch (e) {}
+        combinedStream.current.addTrack(track);
       });
-
-      ////////////////////////////////////////////////////////
-      // SPEAKER DETECTION (UNCHANGED)
-      ////////////////////////////////////////////////////////
-
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const analyser = audioContext.createAnalyser();
-      const source = audioContext.createMediaStreamSource(event.streams[0]);
-
-      source.connect(analyser);
-      analyser.fftSize = 512;
-
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-      let lastSpokeTime = Date.now();
-
-      const detectSpeaking = () => {
-        analyser.getByteFrequencyData(dataArray);
-
-        const volume = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-
-        if (volume > 25) {
-          lastSpokeTime = Date.now();
-          setActiveSpeaker(userId);
-        }
-
-        if (Date.now() - lastSpokeTime > 800) {
-          setActiveSpeaker(prev => (prev === userId ? null : prev));
-        }
-
-        requestAnimationFrame(detectSpeaking);
-      };
-
-      detectSpeaking();
     };
 
     pc.onicecandidate = (event) => {
@@ -269,7 +230,7 @@ function AdminVoiceRoom() {
   };
 
   ////////////////////////////////////////////////////////
-  // CONTROLS (UNCHANGED)
+  // CONTROLS
   ////////////////////////////////////////////////////////
 
   const toggleMute = () => {
@@ -287,126 +248,99 @@ function AdminVoiceRoom() {
   };
 
   ////////////////////////////////////////////////////////
-  // LEAVE
+  // LEAVE (FINAL FIXED)
   ////////////////////////////////////////////////////////
 
   const leaveMeeting = () => {
 
- if (mediaRecorder.current) {
+    if (mediaRecorder.current) {
 
-  mediaRecorder.current.onstop = async () => {
+      const recorder = mediaRecorder.current;
 
-    console.log("🔥 Recording stopped");
+      recorder.onstop = async () => {
 
-    const blob = new Blob(recordedChunks.current, {
-      type: "audio/webm"
-    });
+        console.log("🔥 Recording stopped");
 
-    console.log("🎧 Blob size:", blob.size);
+        const blob = new Blob(recordedChunks.current, {
+          type: "audio/webm"
+        });
 
-    if (blob.size === 0) {
-      console.log("❌ Empty recording, skipping upload");
-      return;
+        console.log("🎧 Blob size:", blob.size);
+
+        if (blob.size === 0) {
+          console.log("❌ Empty recording");
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", blob, "recording.webm");
+        formData.append("meetingId", meetingId);
+
+        try {
+          const res = await fetch("https://voicemeet.onrender.com/recording/upload", {
+            method: "POST",
+            body: formData
+          });
+
+          console.log("✅ Upload status:", res.status);
+
+        } catch (err) {
+          console.error("Upload failed:", err);
+        }
+      };
+
+      // ✅ SAFE STOP
+      if (recorder.state === "recording") {
+        recorder.stop();
+      } else {
+        console.log("⚠ Recorder already stopped");
+      }
     }
 
-    const formData = new FormData();
-    formData.append("file", blob, "recording.webm");
-    formData.append("meetingId", meetingId);
+    Object.values(peerConnections.current).forEach(pc => pc.close());
+    peerConnections.current = {};
 
-    try {
-      console.log("📤 Uploading...");
+    Object.values(audioElements.current).forEach(audio => audio.remove());
+    audioElements.current = {};
 
-      const res = await fetch("https://voicemeet.onrender.com/recording/upload", {
-        method: "POST",
-        body: formData
-      });
-
-      console.log("✅ Upload response:", res.status);
-
-    } catch (err) {
-      console.error("❌ Upload failed:", err);
+    if (localStream.current) {
+      localStream.current.getTracks().forEach(track => track.stop());
     }
 
-    recordedChunks.current = [];
+    setJoined(false);
+    setParticipants([]);
   };
 
-  // ✅ IMPORTANT: force last chunk
-  mediaRecorder.current.requestData();
-
-  // ✅ THEN stop
-  mediaRecorder.current.stop();
-}
-
-  Object.values(peerConnections.current).forEach(pc => pc.close());
-  peerConnections.current = {};
-
-  Object.values(audioElements.current).forEach(audio => audio.remove());
-  audioElements.current = {};
-
-  iceQueues.current = {};
-
-  if (localStream.current) {
-    localStream.current.getTracks().forEach(track => track.stop());
-  }
-
-  combinedStream.current = new MediaStream();
-
-  setJoined(false);
-  setParticipants([]);
-};
-
   ////////////////////////////////////////////////////////
-  // UI (UNCHANGED)
+  // UI
   ////////////////////////////////////////////////////////
 
   return (
-
     <div className="voice-container">
 
       <h2>Admin Voice Room</h2>
-      <p>Meeting ID: {meetingId}</p>
 
       {!joined ? (
         <button onClick={joinMeeting}>Start Meeting</button>
       ) : (
         <>
-          <h3>Participants</h3>
-
-          <div className="participants-grid">
-            {participants.map((p) => (
-              <div
-                key={p}
-                className={`participant ${activeSpeaker === p ? "speaking" : ""}`}
-              >
-                <div className="avatar">
-                  {p.charAt(0).toUpperCase()}
-                </div>
-                <p>{p}</p>
-              </div>
-            ))}
-          </div>
-
           <div className="controls">
 
-            <button className="mute-btn" onClick={toggleMute}>
+            <button onClick={toggleMute}>
               {isMuted ? "🔇 Unmute" : "🎤 Mute"}
             </button>
 
-            <button
-              onClick={toggleSpeaker}
-              className={`speaker-btn ${speakerOn ? "on" : "off"}`}
-            >
+            <button onClick={toggleSpeaker}>
               {speakerOn ? "🔊 ON" : "🔇 OFF"}
             </button>
 
-            <button className="leave-btn" onClick={leaveMeeting}>
-              📞 Leave
+            <button onClick={leaveMeeting}>
+              Leave
             </button>
 
           </div>
         </>
       )}
-
     </div>
   );
 }
