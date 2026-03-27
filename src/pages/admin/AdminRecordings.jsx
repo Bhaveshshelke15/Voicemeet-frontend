@@ -13,14 +13,12 @@ function AdminRecordings() {
   const fetchRecordings = async () => {
     try {
       const res = await API.get("/recording/all");
-      console.log("Recordings:", res.data);
       setRecordings(res.data);
     } catch (err) {
       console.error(err);
     }
   };
 
-  // ✅ FIXED CORRECT ENDPOINT
   const getAudioUrl = (fileName) => {
     return `https://voicemeet.onrender.com/recording/recordings/${fileName}`;
   };
@@ -33,9 +31,7 @@ function AdminRecordings() {
 
       {recordings.length === 0 ? (
 
-        <p className="no-recordings">
-          No recordings available
-        </p>
+        <p>No recordings available</p>
 
       ) : (
 
@@ -43,7 +39,8 @@ function AdminRecordings() {
 
           <thead>
             <tr>
-              <th>Meeting ID</th>
+              <th>Meeting Name</th>
+              <th>Participants</th>
               <th>Date</th>
               <th>Time</th>
               <th>Play</th>
@@ -57,7 +54,16 @@ function AdminRecordings() {
 
               <tr key={r.id}>
 
-                <td>{r.meetingId}</td>
+                {/* ✅ Meeting Name */}
+                <td>{r.meetingName || "N/A"}</td>
+
+                {/* ✅ Participants */}
+                <td>
+                  {r.participants
+                    ? r.participants.split(",").join(", ")
+                    : "N/A"}
+                </td>
+
                 <td>{r.date}</td>
                 <td>{r.time}</td>
 
@@ -77,9 +83,8 @@ function AdminRecordings() {
                   <a
                     href={getAudioUrl(r.fileName)}
                     download
-                    className="download-btn"
                   >
-                    ⬇ Download
+                    Download
                   </a>
                 </td>
 
@@ -94,7 +99,6 @@ function AdminRecordings() {
       )}
 
     </div>
-
   );
 }
 
