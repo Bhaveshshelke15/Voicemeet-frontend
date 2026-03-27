@@ -276,11 +276,13 @@ function AdminVoiceRoom() {
   // ✅ FIXED LEAVE
   ////////////////////////////////////////////////////////
 
-  const leaveMeeting = () => {
+  const leaveMeeting = async () => {
 
-    if (mediaRecorder.current) {
+  if (mediaRecorder.current) {
 
-      const recorder = mediaRecorder.current;
+    const recorder = mediaRecorder.current;
+
+    const uploadPromise = new Promise((resolve) => {
 
       recorder.onstop = async () => {
 
@@ -290,50 +292,59 @@ function AdminVoiceRoom() {
 
         console.log("🎧 Blob size:", blob.size);
 
-        if (blob.size === 0) return;
+        if (blob.size === 0) {
+          resolve();
+          return;
+        }
 
         const formData = new FormData();
         formData.append("file", blob, "recording.webm");
         formData.append("meetingId", meetingId);
 
         try {
-          await fetch("https://voicemeet.onrender.com/recording/upload", {
-            method: "POST",
-            body: formData
-          });
+          const res = await fetch(
+            "https://voicemeet.onrender.com/recording/upload",
+            {
+              method: "POST",
+              body: formData
+            }
+          );
+
+          console.log("✅ Upload response:", await res.text());
         } catch (err) {
-          console.error(err);
+          console.error("❌ Upload failed:", err);
         }
 
         recordedChunks.current = [];
+        resolve(); // ✅ VERY IMPORTANT
       };
+    });
 
-      // ✅ CRITICAL FIX
-      if (recorder.state === "recording") {
-        recorder.stop();
-      } else {
-        console.log("Recorder not recording");
-      }
+    if (recorder.state === "recording") {
+      recorder.stop();
+      await uploadPromise; // ✅ WAIT HERE
     }
+  }
 
-    Object.values(peerConnections.current).forEach(pc => pc.close());
-    peerConnections.current = {};
+  // ✅ CLEANUP AFTER upload finishes
 
-    Object.values(audioElements.current).forEach(audio => audio.remove());
-    audioElements.current = {};
+  Object.values(peerConnections.current).forEach(pc => pc.close());
+  peerConnections.current = {};
 
-    iceQueues.current = {};
+  Object.values(audioElements.current).forEach(audio => audio.remove());
+  audioElements.current = {};
 
-    if (localStream.current) {
-      localStream.current.getTracks().forEach(track => track.stop());
-    }
+  iceQueues.current = {};
 
-    combinedStream.current = new MediaStream();
+  if (localStream.current) {
+    localStream.current.getTracks().forEach(track => track.stop());
+  }
 
-    setJoined(false);
-    setParticipants([]);
-  };
+  combinedStream.current = new MediaStream();
 
+  setJoined(false);
+  setParticipants([]);
+};
   ////////////////////////////////////////////////////////
   // UI (UNCHANGED)
   ////////////////////////////////////////////////////////
