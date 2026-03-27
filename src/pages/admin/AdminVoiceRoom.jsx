@@ -340,8 +340,27 @@ function AdminVoiceRoom() {
     localStream.current.getTracks().forEach(track => track.stop());
   }
 
-  combinedStream.current = new MediaStream();
+  event.streams[0].getTracks().forEach(track => {
 
+  try {
+    combinedStream.current.addTrack(track);
+  } catch (e) {
+    console.log("Track already exists");
+  }
+
+});
+
+// 🔥 RESTART RECORDING
+if (mediaRecorder.current && mediaRecorder.current.state === "recording") {
+
+  console.log("🔁 Restarting recorder due to new participant");
+
+  mediaRecorder.current.stop();
+
+  setTimeout(() => {
+    startRecording();
+  }, 500);
+}
   setJoined(false);
   setParticipants([]);
 };
