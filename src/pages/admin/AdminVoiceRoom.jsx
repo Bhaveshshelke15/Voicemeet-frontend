@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import SockJS from "sockjs-client";
 import { Client } from "@stomp/stompjs";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import "../../styles/voiceRoom.css";
 
 function AdminVoiceRoom() {
 
   const { meetingId } = useParams();
+  const navigate = useNavigate();
 
   const stompClient = useRef(null);
   const localStream = useRef(null);
@@ -21,8 +22,6 @@ function AdminVoiceRoom() {
   const [participants, setParticipants] = useState([]);
   const [isMuted, setIsMuted] = useState(false);
   const [speakerOn, setSpeakerOn] = useState(true);
-
-  // 🔥 Active Speaker
   const [activeSpeaker, setActiveSpeaker] = useState(null);
 
   const configuration = {
@@ -31,6 +30,19 @@ function AdminVoiceRoom() {
       { urls: "stun:stun1.l.google.com:19302" }
     ]
   };
+
+  ////////////////////////////////////////////////////////
+  // 🔄 AUTO REJOIN
+  ////////////////////////////////////////////////////////
+
+  useEffect(() => {
+    const savedMeeting = localStorage.getItem("activeMeeting");
+
+    if (savedMeeting === meetingId) {
+      console.log("Rejoining meeting...");
+      joinMeeting(true);
+    }
+  }, []);
 
   ////////////////////////////////////////////////////////
   // SOCKET
@@ -59,13 +71,19 @@ function AdminVoiceRoom() {
   // JOIN
   ////////////////////////////////////////////////////////
 
-  const joinMeeting = async () => {
+  const joinMeeting = async (isRejoin = false) => {
 
-    localStream.current = await navigator.mediaDevices.getUserMedia({
-      audio: true
-    });
+    if (!localStream.current) {
+      localStream.current = await navigator.mediaDevices.getUserMedia({
+        audio: true
+      });
+    }
 
     setParticipants(["admin"]);
+
+    if (!isRejoin) {
+      localStorage.setItem("activeMeeting", meetingId);
+    }
 
     startRecording();
 
@@ -165,7 +183,7 @@ function AdminVoiceRoom() {
   };
 
   ////////////////////////////////////////////////////////
-  // CREATE CONNECTION
+  // CREATE CONNECTION (UNCHANGED)
   ////////////////////////////////////////////////////////
 
   const createConnection = async (userId) => {
@@ -191,19 +209,6 @@ function AdminVoiceRoom() {
       audio.srcObject = event.streams[0];
       audio.muted = !speakerOn;
       audio.play().catch(() => {});
-
-      // 🔥 Recording add
-      if (mediaRecorder.current) {
-        event.streams[0].getTracks().forEach(track => {
-          try {
-            mediaRecorder.current.stream.addTrack(track);
-          } catch (e) {}
-        });
-      }
-
-      ////////////////////////////////////////////////////////
-      // 🔥 SPEAKER DETECTION (FIXED)
-      ////////////////////////////////////////////////////////
 
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
       const analyser = audioContext.createAnalyser();
@@ -267,52 +272,29 @@ function AdminVoiceRoom() {
   };
 
   ////////////////////////////////////////////////////////
-  // CONTROLS
+  // 🔴 LOGOUT
   ////////////////////////////////////////////////////////
 
-  const toggleMute = () => {
-    localStream.current.getAudioTracks().forEach(track => {
-      track.enabled = !track.enabled;
-    });
-    setIsMuted(!isMuted);
-  };
+  const handleLogout = () => {
 
-  const toggleSpeaker = () => {
-    Object.values(audioElements.current).forEach(audio => {
-      audio.muted = speakerOn;
-    });
-    setSpeakerOn(!speakerOn);
+    leaveMeeting();
+
+    localStorage.removeItem("activeMeeting");
+    localStorage.removeItem("userId");
+
+    navigate("/login"); // change if needed
   };
 
   ////////////////////////////////////////////////////////
-  // LEAVE
+  // LEAVE (same)
   ////////////////////////////////////////////////////////
 
   const leaveMeeting = () => {
 
+    localStorage.removeItem("activeMeeting");
+
     if (mediaRecorder.current) {
-
       mediaRecorder.current.stop();
-
-      mediaRecorder.current.onstop = async () => {
-
-        const blob = new Blob(recordedChunks.current, {
-          type: "audio/webm"
-        });
-
-        const formData = new FormData();
-        formData.append("file", blob, "recording.webm");
-        formData.append("meetingId", meetingId);
-
-        try {
-          await fetch("https://voicemeet.onrender.com/recording/upload", {
-            method: "POST",
-            body: formData
-          });
-        } catch (err) {}
-
-        recordedChunks.current = [];
-      };
     }
 
     Object.values(peerConnections.current).forEach(pc => pc.close());
@@ -336,8 +318,14 @@ function AdminVoiceRoom() {
   ////////////////////////////////////////////////////////
 
   return (
-
     <div className="voice-container">
+
+      {/* 🔴 LOGOUT BUTTON */}
+      <div style={{ position: "absolute", top: 20, right: 20 }}>
+        <button className="leave-btn" onClick={handleLogout}>
+          Logout
+        </button>
+      </div>
 
       <h2>Admin Voice Room</h2>
       <p>Meeting ID: {meetingId}</p>

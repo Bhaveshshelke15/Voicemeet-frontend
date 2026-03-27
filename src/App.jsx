@@ -1,4 +1,6 @@
-import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+
+import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 
 // AUTH
 import AdminLogin from "./pages/admin/AdminLogin";
@@ -25,9 +27,40 @@ import MeetingRoom from "./pages/user/MeetingRoom";
 import UserMeetings from "./pages/user/UserMeetings";
 import UserVoiceRoom from "./pages/user/UserVoiceRoom";
 
+
+// 🔥 GLOBAL MEETING HANDLER
+function MeetingRedirectHandler() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const activeMeeting = localStorage.getItem("activeMeeting");
+    const role = localStorage.getItem("role"); // "admin" or "user"
+
+    // If meeting active and user NOT already in meeting page
+    if (
+      activeMeeting &&
+      !location.pathname.includes("/meeting/")
+    ) {
+      if (role === "admin") {
+        navigate(`/admin/meeting/${activeMeeting}`);
+      } else if (role === "user") {
+        navigate(`/user/meeting/${activeMeeting}`);
+      }
+    }
+  }, [location, navigate]);
+
+  return null;
+}
+
+
 function App() {
   return (
     <HashRouter>
+
+      {/* 🔥 AUTO REJOIN HANDLER */}
+      <MeetingRedirectHandler />
+
       <Routes>
 
         {/* DEFAULT */}
@@ -47,7 +80,7 @@ function App() {
           <Route path="employees" element={<Employees />} />
           <Route path="chat" element={<AdminChat />} />
 
-          {/* 🔥 FIXED MEETING ROUTE */}
+          {/* 🔥 VOICE ROOM */}
           <Route path="meeting/:meetingId" element={<AdminVoiceRoom />} />
 
           <Route path="recordings" element={<AdminRecordings />} />
@@ -62,7 +95,7 @@ function App() {
           <Route path="meeting-room" element={<MeetingRoom />} />
           <Route path="meetings" element={<UserMeetings />} />
 
-          {/* 🔥 FIXED MEETING ROUTE */}
+          {/* 🔥 VOICE ROOM */}
           <Route path="meeting/:meetingId" element={<UserVoiceRoom />} />
 
         </Route>
@@ -73,3 +106,4 @@ function App() {
 }
 
 export default App;
+
