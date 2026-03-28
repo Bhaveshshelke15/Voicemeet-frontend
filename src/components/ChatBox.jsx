@@ -4,10 +4,10 @@ import { Client } from "@stomp/stompjs";
 import axios from "axios";
 import "../styles/chatbox.css";
 
-function ChatBox({ currentUser }) {
-  const [users, setUsers] = useState([]);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [messages, setMessages] = useState([]);
+function ChatBox({ currentUser, isAdmin }) {
+  const [users, setUsers] = useState([]); // all users (only used by admin)
+  const [selectedUser, setSelectedUser] = useState(null); // selected chat
+  const [messages, setMessages] = useState([]); // all messages
   const [text, setText] = useState("");
   const [typingUser, setTypingUser] = useState(null);
 
@@ -30,92 +30,92 @@ function ChatBox({ currentUser }) {
     stompClient.current = new Client({
       webSocketFactory: () => socket,
       reconnectDelay: 5000,
-
       onConnect: () => {
         console.log("✅ Connected to websocket");
 
-        // RECEIVE MESSAGE
-        stompClient.current.subscribe(
-          "/topic/private/" + currentUser,
-          (msg) => {
-            const message = JSON.parse(msg.body);
-            setMessages(prev => [...prev, message]);
+        // RECEIVE PRIVATE MESSAGE
+        stompClient.current.subscribe(`/topic/private/${currentUser}`, (msg) => {
+          const message = JSON.parse(msg.body);
 
-            // Notification
-            if (
-              message.sender !== currentUser &&
-              Notification.permission === "granted"
-            ) {
-              new Notification("New Message", { body: message.message });
-            }
+          setMessages((prev) => [...prev, message]);
 
-            // Mark seen
-            if (message.sender !== currentUser) sendSeen(message.sender);
+          // Notification for new messages
+          if (message.sender !== currentUser && Notification.permission === "granted") {
+            new Notification(`New Message from ${message.sender}`, { body: message.message });
           }
-        );
+
+          // Mark as seen
+          if (message.sender !== currentUser) sendSeen(message.sender);
+
+          // Auto select user if admin and first message from user
+          if (isAdmin && !selectedUser && message.sender !== currentUser) {
+            setSelectedUser(message.sender);
+          }
+        });
 
         // TYPING INDICATOR
-        stompClient.current.subscribe(
-          "/topic/typing/" + currentUser,
-          (msg) => {
-            const data = JSON.parse(msg.body);
-            if (data.sender === selectedUser) {
-              setTypingUser(data.sender);
-              setTimeout(() => setTypingUser(null), 2000);
-            }
+        stompClient.current.subscribe(`/topic/typing/${currentUser}`, (msg) => {
+          const data = JSON.parse(msg.body);
+          if (data.sender === selectedUser) {
+            setTypingUser(data.sender);
+            setTimeout(() => setTypingUser(null), 2000);
           }
-        );
+        });
       },
     });
 
     stompClient.current.activate();
 
-    // Request permission once
     if (Notification.permission !== "granted") {
       Notification.requestPermission();
     }
 
-    return () => {
-      stompClient.current?.deactivate();
+    return () => stompClient.current?.deactivate();
+  }, [currentUser, selectedUser, isAdmin]);
+
+  //////////////////////////////////////////////////
+  // LOAD USERS (Admin only)
+  //////////////////////////////////////////////////
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const fetchUsers = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get("https://voicemeet.onrender.com/admin/users", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setUsers(res.data);
+
+        // Auto-select first user if any
+        if (res.data.length > 0) setSelectedUser(res.data[0].userId);
+      } catch (err) {
+        console.error(err);
+      }
     };
-  }, [currentUser]);
 
-  //////////////////////////////////////////////////
-  // SEARCH USER
-  //////////////////////////////////////////////////
-  const searchUser = async (keyword) => {
-    if (!keyword.trim()) {
-      setUsers([]);
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem("token");
-      const res = await axios.get(
-        "http://localhost:8080/admin/search-user?keyword=" + keyword,
-        { headers: { Authorization: "Bearer " + token } }
-      );
-      setUsers(res.data);
-    } catch (err) {
-      console.log(err);
-    }
-  };
+    fetchUsers();
+  }, [isAdmin]);
 
   //////////////////////////////////////////////////
   // LOAD CHAT HISTORY
   //////////////////////////////////////////////////
-  const loadChat = async (userId) => {
-    setSelectedUser(userId);
+  useEffect(() => {
+    if (!selectedUser) return;
 
-    try {
-      const res = await axios.get(
-        `https://voicemeet.onrender.com/chat/history/${currentUser}/${userId}`
-      );
-      setMessages(res.data);
-    } catch (err) {
-      console.log(err);
-    }
-  };
+    const fetchHistory = async () => {
+      try {
+        const res = await axios.get(
+          `https://voicemeet.onrender.com/chat/history/${currentUser}/${selectedUser}`
+        );
+        setMessages(res.data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchHistory();
+  }, [selectedUser, currentUser]);
 
   //////////////////////////////////////////////////
   // SEND MESSAGE
@@ -131,6 +131,7 @@ function ChatBox({ currentUser }) {
       time: new Date().toLocaleTimeString(),
     };
 
+    // Send via WebSocket
     if (stompClient.current?.connected) {
       stompClient.current.publish({
         destination: "/app/private-chat",
@@ -138,7 +139,7 @@ function ChatBox({ currentUser }) {
       });
     }
 
-    setMessages(prev => [...prev, msg]);
+    setMessages((prev) => [...prev, msg]);
     setText("");
   };
 
@@ -155,7 +156,7 @@ function ChatBox({ currentUser }) {
   };
 
   //////////////////////////////////////////////////
-  // SEEN ✔✔
+  // MARK SEEN
   //////////////////////////////////////////////////
   const sendSeen = (sender) => {
     if (stompClient.current?.connected) {
@@ -181,51 +182,45 @@ function ChatBox({ currentUser }) {
   //////////////////////////////////////////////////
   return (
     <div className="chat-wrapper">
-      <div className="chat-users">
-        <input
-          className="chat-search"
-          placeholder="Search..."
-          onChange={(e) => searchUser(e.target.value)}
-        />
-        <div className="user-list">
-          {users.map((u) => (
-            <div
-              key={u.userId}
-              className="user-item"
-              onClick={() => loadChat(u.userId)}
-            >
-              {u.name}
-            </div>
-          ))}
+      {isAdmin && (
+        <div className="chat-users">
+          <div className="user-list">
+            {users.map((u) => (
+              <div
+                key={u.userId}
+                className={`user-item ${selectedUser === u.userId ? "active" : ""}`}
+                onClick={() => setSelectedUser(u.userId)}
+              >
+                {u.name}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="chat-main">
         {selectedUser ? (
           <>
             <h4 className="chat-header">{selectedUser}</h4>
+
             <div className="chat-messages">
               {filteredMessages.map((m, i) => (
                 <div
                   key={i}
-                  className={`message ${
-                    m.sender === currentUser ? "sent" : "received"
-                  }`}
+                  className={`message ${m.sender === currentUser ? "sent" : "received"}`}
                 >
                   <span className="message-bubble">
                     {m.message}
                     <br />
                     <small>
                       {m.time}{" "}
-                      {m.sender === currentUser &&
-                        (m.status === "SEEN" ? "✔✔" : "✔")}
+                      {m.sender === currentUser && (m.status === "SEEN" ? "✔✔" : "✔")}
                     </small>
                   </span>
                 </div>
               ))}
 
-              {typingUser && <p className="typing">{typingUser} typing...</p>}
-
+              {typingUser && <p className="typing">{typingUser} is typing...</p>}
               <div ref={messageEndRef}></div>
             </div>
 
