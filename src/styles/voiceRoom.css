@@ -108,3 +108,29 @@
   color: #666;
   font-size: 14px;
 }
+
+
+.start-btn {
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+
+  background: linear-gradient(135deg, #4A00E0, #8E2DE2);
+  border: none;
+  border-radius: 8px;
+
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.start-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+.start-btn:active {
+  transform: scale(0.98);
+}

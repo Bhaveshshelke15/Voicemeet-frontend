@@ -419,7 +419,9 @@ function AdminVoiceRoom() {
       <p>Meeting ID: {meetingId}</p>
 
       {!joined ? (
-        <button onClick={joinMeeting}>Start Meeting</button>
+        <button className="start-btn" onClick={joinMeeting}>
+  🚀 Start Meeting
+</button>
       ) : (
         <>
           <h3>Participants</h3>
