@@ -109,23 +109,7 @@ export default function Dashboard() {
       </div>
 
       {/* Overview */}
-      <div className="overview">
-
-        <h3>Meeting Overview</h3>
-        <p>Visual analytics will be added here (charts later).</p>
-
-        <h4>Call Recording</h4>
-
-        <input
-          className="meeting-input"
-          placeholder="Enter Meeting Name"
-        />
-
-        <button className="record-btn">
-          🎙 Start Recording
-        </button>
-
-      </div>
+      
 
       {/* Chat */}
       <div className="chat-card">
