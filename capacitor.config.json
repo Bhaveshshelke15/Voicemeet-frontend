@@ -1,0 +1,9 @@
+{
+  "appId": "com.voicemeet.app",
+  "appName": "VoiceMeet",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "allowNavigation": ["voicemeet.onrender.com"]
+  }
+}

@@ -1,7 +1,8 @@
 import axios from "axios";
 
 const API = axios.create({
-  baseURL: "https://voicemeet.onrender.com"
+  baseURL: "https://voicemeet.onrender.com",
+  withCredentials: false, // 🔥 IMPORTANT (mobile fix)
 });
 
 API.interceptors.request.use((config) => {

@@ -25,6 +25,8 @@ import MeetingRoom from "./pages/user/MeetingRoom";
 import UserMeetings from "./pages/user/UserMeetings";
 import UserVoiceRoom from "./pages/user/UserVoiceRoom";
 
+import SelectRole from "./pages/SelectRole";
+
 function App() {
   return (
     <HashRouter>
@@ -32,6 +34,16 @@ function App() {
 
         {/* DEFAULT */}
         <Route path="/" element={<Navigate to="/admin/login" />} />
+
+          {/* 🔥 FIRST SCREEN */}
+  <Route path="/" element={<SelectRole />} />
+
+  {/* ADMIN */}
+  <Route path="/admin-login" element={<AdminLogin />} />
+
+  {/* USER */}
+  <Route path="/user-login" element={<UserLogin />} />
+
 
         {/* LOGIN */}
         <Route path="/admin/login" element={<AdminLogin />} />
