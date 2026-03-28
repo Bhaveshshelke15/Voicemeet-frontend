@@ -1,192 +1,110 @@
-import React, { useEffect, useState, useRef } from "react";
-import SockJS from "sockjs-client";
-import { Client } from "@stomp/stompjs";
+import { useEffect, useState } from "react";
 import axios from "axios";
-import "../../styles/chatbox.css";
+import { useNavigate } from "react-router-dom";
+import ChatBox from "../../components/ChatBox";
+import "../../styles/userDashboard.css";
 
-function ChatBox({ currentUser }) {
-  const [messages, setMessages] = useState([]);
-  const [text, setText] = useState("");
-  const [typingUser, setTypingUser] = useState(null);
-  const selectedUser = "admin"; // User always chats with admin
+export default function Dashboard() {
 
-  const stompClient = useRef(null);
-  const messageEndRef = useRef(null);
+  const [meetings, setMeetings] = useState([]);
 
-  //////////////////////////////////////////////////
-  // AUTO SCROLL
-  //////////////////////////////////////////////////
+  const userId = localStorage.getItem("userId");
+  const token = localStorage.getItem("token");
+
+  const navigate = useNavigate();
+
   useEffect(() => {
-    messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
 
-  //////////////////////////////////////////////////
-  // CONNECT WEBSOCKET
-  //////////////////////////////////////////////////
-  useEffect(() => {
-    const socket = new SockJS("https://voicemeet.onrender.com/ws");
-
-    stompClient.current = new Client({
-      webSocketFactory: () => socket,
-      reconnectDelay: 5000,
-      onConnect: () => {
-        console.log("✅ Connected to websocket");
-
-        // RECEIVE PRIVATE MESSAGE
-        stompClient.current.subscribe(`/topic/private/${currentUser}`, (msg) => {
-          const message = JSON.parse(msg.body);
-          setMessages((prev) => [...prev, message]);
-
-          // Notification for new messages
-          if (message.sender !== currentUser && Notification.permission === "granted") {
-            new Notification(`New Message from ${message.sender}`, { body: message.message });
-          }
-
-          // Send seen
-          if (message.sender !== currentUser) sendSeen(message.sender);
-        });
-
-        // TYPING INDICATOR
-        stompClient.current.subscribe(`/topic/typing/${currentUser}`, (msg) => {
-          const data = JSON.parse(msg.body);
-          if (data.sender === selectedUser) {
-            setTypingUser(data.sender);
-            setTimeout(() => setTypingUser(null), 2000);
-          }
-        });
-      },
-    });
-
-    stompClient.current.activate();
-
-    if (Notification.permission !== "granted") {
-      Notification.requestPermission();
-    }
-
-    return () => {
-      stompClient.current?.deactivate();
-    };
-  }, [currentUser]);
-
-  //////////////////////////////////////////////////
-  // LOAD CHAT HISTORY WITH ADMIN
-  //////////////////////////////////////////////////
-  useEffect(() => {
-    const fetchHistory = async () => {
+    const fetchMeetings = async () => {
       try {
         const res = await axios.get(
-          `https://voicemeet.onrender.com/chat/history/${currentUser}/admin`
+          "https://voicemeet.onrender.com/meeting/user/" + userId,
+          {
+            headers: {
+              Authorization: "Bearer " + token
+            }
+          }
         );
-        setMessages(res.data);
+
+        setMeetings(res.data);
+
       } catch (err) {
         console.error(err);
       }
     };
 
-    if (currentUser) fetchHistory();
-  }, [currentUser]);
+    if (userId && token) fetchMeetings();
 
-  //////////////////////////////////////////////////
-  // SEND MESSAGE
-  //////////////////////////////////////////////////
-  const sendMessage = () => {
-    if (!text.trim()) return;
+  }, [userId, token]);
 
-    const msg = {
-      sender: currentUser,
-      receiver: selectedUser,
-      message: text,
-      status: "SENT",
-      time: new Date().toLocaleTimeString(),
-    };
-
-    if (stompClient.current?.connected) {
-      stompClient.current.publish({
-        destination: "/app/private-chat",
-        body: JSON.stringify(msg),
-      });
-    }
-
-    setMessages((prev) => [...prev, msg]);
-    setText("");
+  const joinMeeting = (meetingId) => {
+    navigate("/user/meeting/" + meetingId);
   };
 
-  //////////////////////////////////////////////////
-  // TYPING INDICATOR
-  //////////////////////////////////////////////////
-  const sendTyping = () => {
-    if (stompClient.current?.connected) {
-      stompClient.current.publish({
-        destination: "/app/typing",
-        body: JSON.stringify({ sender: currentUser, receiver: selectedUser }),
-      });
-    }
-  };
-
-  //////////////////////////////////////////////////
-  // SEEN
-  //////////////////////////////////////////////////
-  const sendSeen = (sender) => {
-    if (stompClient.current?.connected) {
-      stompClient.current.publish({
-        destination: "/app/seen",
-        body: JSON.stringify({ sender: currentUser, receiver: sender }),
-      });
-    }
-  };
-
-  //////////////////////////////////////////////////
-  // FILTER MESSAGES FOR UI
-  //////////////////////////////////////////////////
-  const filteredMessages = messages.filter(
-    (m) =>
-      (m.sender === currentUser && m.receiver === selectedUser) ||
-      (m.sender === selectedUser && m.receiver === currentUser)
-  );
-
-  //////////////////////////////////////////////////
-  // UI
-  //////////////////////////////////////////////////
   return (
-    <div className="chat-wrapper">
-      <div className="chat-main">
-        <h4 className="chat-header">Admin</h4>
 
-        <div className="chat-messages">
-          {filteredMessages.map((m, i) => (
-            <div
-              key={i}
-              className={`message ${m.sender === currentUser ? "sent" : "received"}`}
-            >
-              <span className="message-bubble">
-                {m.message}
-                <br />
-                <small>
-                  {m.time} {m.sender === currentUser && (m.status === "SEEN" ? "✔✔" : "✔")}
-                </small>
-              </span>
-            </div>
-          ))}
+    <div className="user-dashboard">
 
-          {typingUser && <p className="typing">{typingUser} is typing...</p>}
+      {/* ✅ STATS */}
+      <div className="stats-container">
 
-          <div ref={messageEndRef}></div>
+        <div className="stat-card">
+          <h4>Total</h4>
+          <p>{meetings.length}</p>
         </div>
 
-        <div className="chat-input-area">
-          <input
-            value={text}
-            onChange={(e) => {
-              setText(e.target.value);
-              sendTyping();
-            }}
-            placeholder="Type message..."
-          />
-          <button onClick={sendMessage}>Send</button>
+        <div className="stat-card">
+          <h4>Active</h4>
+          <p>{meetings.filter(m => m.status === "ACTIVE").length}</p>
         </div>
+
+        <div className="stat-card">
+          <h4>Completed</h4>
+          <p>{meetings.filter(m => m.status === "ENDED").length}</p>
+        </div>
+
       </div>
+
+      {/* ✅ MAIN CONTENT */}
+      <div className="dashboard-grid">
+
+        {/* 🟢 MEETINGS */}
+        <div className="meeting-section">
+
+          <h2>My Meetings</h2>
+
+          {meetings.length === 0 ? (
+            <p className="no-meeting">No Meetings</p>
+          ) : (
+            meetings.map((m, index) => (
+              <div key={index} className="meeting-card">
+
+                <div>
+                  <h3>{m.meetingName}</h3>
+                  <p>Status: {m.status}</p>
+                </div>
+
+                <button
+                  className="join-btn"
+                  onClick={() => joinMeeting(m.meetingId)}
+                >
+                  Join
+                </button>
+
+              </div>
+            ))
+          )}
+
+        </div>
+
+        {/* 🔵 CHAT (MOVED HERE) */}
+        <div className="chat-section">
+          <h2>Team Chat</h2>
+          <ChatBox currentUser={userId} />
+        </div>
+
+      </div>
+
     </div>
   );
 }
-
-export default ChatBox;
