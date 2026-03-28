@@ -18,27 +18,23 @@ function ChatBox({ currentUser }) {
   //////////////////////////////////////////////////
   // AUTO SCROLL
   //////////////////////////////////////////////////
-
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   //////////////////////////////////////////////////
-  // CONNECT WEBSOCKET
+  // CONNECT WEBSOCKET (✅ FIXED)
   //////////////////////////////////////////////////
-
   useEffect(() => {
 
     const socket = new SockJS("https://voicemeet.onrender.com/ws");
 
     stompClient.current = new Client({
-
       webSocketFactory: () => socket,
       reconnectDelay: 5000,
 
       onConnect: () => {
-
-        console.log("Connected to websocket");
+        console.log("✅ Connected to websocket");
 
         // ✅ RECEIVE MESSAGE
         stompClient.current.subscribe(
@@ -47,20 +43,21 @@ function ChatBox({ currentUser }) {
 
             const message = JSON.parse(msg.body);
 
+            // ✅ ALWAYS PUSH (no filter here)
+            setMessages(prev => [...prev, message]);
+
+            // 🔔 SAFE notification
             if (
-              (message.sender === selectedUser && message.receiver === currentUser) ||
-              (message.sender === currentUser && message.receiver === selectedUser)
+              message.sender !== currentUser &&
+              Notification.permission === "granted"
             ) {
-              setMessages(prev => [...prev, message]);
+              new Notification("New Message", {
+                body: message.message
+              });
+            }
 
-              // 🔔 Notification
-              if (message.sender !== currentUser) {
-                new Notification("New Message", {
-                  body: message.message
-                });
-              }
-
-              // ✅ SEND SEEN
+            // ✅ SEND SEEN
+            if (message.sender !== currentUser) {
               sendSeen(message.sender);
             }
           }
@@ -71,15 +68,14 @@ function ChatBox({ currentUser }) {
           "/topic/typing/" + currentUser,
           (msg) => {
             const data = JSON.parse(msg.body);
+
             if (data.sender === selectedUser) {
               setTypingUser(data.sender);
               setTimeout(() => setTypingUser(null), 2000);
             }
           }
         );
-
       }
-
     });
 
     stompClient.current.activate();
@@ -89,12 +85,17 @@ function ChatBox({ currentUser }) {
       Notification.requestPermission();
     }
 
-  }, [currentUser, selectedUser]);
+    return () => {
+      if (stompClient.current) {
+        stompClient.current.deactivate();
+      }
+    };
+
+  }, [currentUser]); // ✅ FIXED (removed selectedUser)
 
   //////////////////////////////////////////////////
   // SEARCH USER
   //////////////////////////////////////////////////
-
   const searchUser = async (keyword) => {
 
     if (!keyword.trim()) {
@@ -117,19 +118,16 @@ function ChatBox({ currentUser }) {
     } catch (err) {
       console.log(err);
     }
-
   };
 
   //////////////////////////////////////////////////
   // LOAD CHAT HISTORY
   //////////////////////////////////////////////////
-
   const loadChat = async (userId) => {
 
     setSelectedUser(userId);
 
     try {
-
       const res = await axios.get(
         `https://voicemeet.onrender.com/chat/history/${currentUser}/${userId}`
       );
@@ -139,13 +137,11 @@ function ChatBox({ currentUser }) {
     } catch (err) {
       console.log(err);
     }
-
   };
 
   //////////////////////////////////////////////////
   // SEND MESSAGE
   //////////////////////////////////////////////////
-
   const sendMessage = async () => {
 
     if (!text.trim() || !selectedUser) return;
@@ -178,13 +174,11 @@ function ChatBox({ currentUser }) {
     } catch (err) {
       console.error(err);
     }
-
   };
 
   //////////////////////////////////////////////////
   // TYPING
   //////////////////////////////////////////////////
-
   const sendTyping = () => {
 
     if (stompClient.current?.connected && selectedUser) {
@@ -196,15 +190,12 @@ function ChatBox({ currentUser }) {
           receiver: selectedUser
         })
       });
-
     }
-
   };
 
   //////////////////////////////////////////////////
   // SEEN ✔✔
   //////////////////////////////////////////////////
-
   const sendSeen = (sender) => {
 
     if (stompClient.current?.connected) {
@@ -216,110 +207,109 @@ function ChatBox({ currentUser }) {
           receiver: sender
         })
       });
-
     }
-
   };
 
   //////////////////////////////////////////////////
-  // UI
+  // FILTER MESSAGES FOR UI (✅ FIXED HERE)
   //////////////////////////////////////////////////
+  const filteredMessages = messages.filter(m =>
+    selectedUser &&
+    (
+      (m.sender === currentUser && m.receiver === selectedUser) ||
+      (m.sender === selectedUser && m.receiver === currentUser)
+    )
+  );
 
+  //////////////////////////////////////////////////
+  // UI (UNCHANGED)
+  //////////////////////////////////////////////////
   return (
+    <div className="chat-wrapper">
 
-  <div className="chat-wrapper">
+      <div className="chat-users">
 
-    {/* LEFT SIDE */}
-    <div className="chat-users">
+        <input
+          className="chat-search"
+          placeholder="Search..."
+          onChange={(e) => searchUser(e.target.value)}
+        />
 
-      <input
-        className="chat-search"
-        placeholder="Search..."
-        onChange={(e) => searchUser(e.target.value)}
-      />
+        <div className="user-list">
+          {users.map(u => (
+            <div
+              key={u.userId}
+              className="user-item"
+              onClick={() => loadChat(u.userId)}
+            >
+              {u.name}
+            </div>
+          ))}
+        </div>
 
-      <div className="user-list">
-        {users.map(u => (
-          <div
-            key={u.userId}
-            className="user-item"
-            onClick={() => loadChat(u.userId)}
-          >
-            {u.name}
+      </div>
+
+      <div className="chat-main">
+
+        {selectedUser ? (
+          <>
+            <h4 className="chat-header">{selectedUser}</h4>
+
+            <div className="chat-messages">
+
+              {filteredMessages.map((m, i) => (
+
+                <div
+                  key={i}
+                  className={`message ${m.sender === currentUser ? "sent" : "received"}`}
+                >
+                  <span className="message-bubble">
+                    {m.message}
+                    <br />
+                    <small>
+                      {m.time}{" "}
+                      {m.sender === currentUser &&
+                        (m.status === "SEEN" ? "✔✔" : "✔")}
+                    </small>
+                  </span>
+                </div>
+
+              ))}
+
+              {typingUser && (
+                <p className="typing">{typingUser} typing...</p>
+              )}
+
+              <div ref={messageEndRef}></div>
+
+            </div>
+
+            <div className="chat-input-area">
+
+              <input
+                value={text}
+                onChange={(e) => {
+                  setText(e.target.value);
+                  sendTyping();
+                }}
+                placeholder="Type message..."
+              />
+
+              <button onClick={sendMessage}>Send</button>
+
+            </div>
+
+          </>
+        ) : (
+          <div className="no-chat">
+            Select a user to start chatting
           </div>
-        ))}
+        )}
+
       </div>
 
     </div>
-
-    {/* RIGHT SIDE */}
-    <div className="chat-main">
-
-      {selectedUser ? (
-        <>
-          <h4 className="chat-header">{selectedUser}</h4>
-
-          {/* MESSAGES */}
-          <div className="chat-messages">
-
-            {messages.map((m, i) => (
-
-              <div
-                key={i}
-                className={`message ${m.sender === currentUser ? "sent" : "received"}`}
-              >
-
-                <span className="message-bubble">
-                  {m.message}
-                  <br />
-
-                  <small>
-                    {m.time} {" "}
-                    {m.sender === currentUser &&
-                      (m.status === "SEEN" ? "✔✔" : "✔")}
-                  </small>
-                </span>
-
-              </div>
-
-            ))}
-
-            {typingUser && (
-              <p className="typing">{typingUser} typing...</p>
-            )}
-
-            <div ref={messageEndRef}></div>
-
-          </div>
-
-          {/* INPUT */}
-          <div className="chat-input-area">
-
-            <input
-              value={text}
-              onChange={(e) => {
-                setText(e.target.value);
-                sendTyping();
-              }}
-              placeholder="Type message..."
-            />
-
-            <button onClick={sendMessage}>Send</button>
-
-          </div>
-
-        </>
-      ) : (
-        <div className="no-chat">
-          Select a user to start chatting
-        </div>
-      )}
-
-    </div>
-
-  </div>
-
-);
+  );
 }
 
 export default ChatBox;
