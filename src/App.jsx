@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter, Routes, Route } from "react-router-dom";
 
 // AUTH
 import AdminLogin from "./pages/admin/AdminLogin";
@@ -32,18 +32,8 @@ function App() {
     <HashRouter>
       <Routes>
 
-        {/* DEFAULT */}
-        <Route path="/" element={<Navigate to="/admin/login" />} />
-
-          {/* 🔥 FIRST SCREEN */}
-  <Route path="/" element={<SelectRole />} />
-
-  {/* ADMIN */}
-  <Route path="/admin-login" element={<AdminLogin />} />
-
-  {/* USER */}
-  <Route path="/user-login" element={<UserLogin />} />
-
+        {/* ✅ FIRST SCREEN */}
+        <Route path="/" element={<SelectRole />} />
 
         {/* LOGIN */}
         <Route path="/admin/login" element={<AdminLogin />} />
@@ -51,32 +41,23 @@ function App() {
 
         {/* ADMIN ROUTES */}
         <Route path="/admin" element={<AdminLayout />}>
-
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="create-user" element={<CreateEmployee />} />
           <Route path="create-meeting" element={<CreateMeeting />} />
           <Route path="invite-user" element={<InviteUser />} />
           <Route path="employees" element={<Employees />} />
           <Route path="chat" element={<AdminChat />} />
-
-          {/* 🔥 FIXED MEETING ROUTE */}
           <Route path="meeting/:meetingId" element={<AdminVoiceRoom />} />
-
           <Route path="recordings" element={<AdminRecordings />} />
-
         </Route>
 
         {/* USER ROUTES */}
         <Route path="/user" element={<UserLayout />}>
-
           <Route path="dashboard" element={<UserDashboard />} />
           <Route path="join-meeting" element={<JoinMeeting />} />
           <Route path="meeting-room" element={<MeetingRoom />} />
           <Route path="meetings" element={<UserMeetings />} />
-
-          {/* 🔥 FIXED MEETING ROUTE */}
           <Route path="meeting/:meetingId" element={<UserVoiceRoom />} />
-
         </Route>
 
       </Routes>
