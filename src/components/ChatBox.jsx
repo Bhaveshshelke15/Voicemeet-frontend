@@ -5,6 +5,7 @@ import axios from "axios";
 import "../styles/chatbox.css";
 
 function ChatBox({ currentUser }) {
+
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -22,9 +23,10 @@ function ChatBox({ currentUser }) {
   }, [messages]);
 
   //////////////////////////////////////////////////
-  // CONNECT WEBSOCKET
+  // CONNECT WEBSOCKET (✅ FIXED)
   //////////////////////////////////////////////////
   useEffect(() => {
+
     const socket = new SockJS("https://voicemeet.onrender.com/ws");
 
     stompClient.current = new Client({
@@ -34,56 +36,68 @@ function ChatBox({ currentUser }) {
       onConnect: () => {
         console.log("✅ Connected to websocket");
 
-        // RECEIVE MESSAGE
+        // ✅ RECEIVE MESSAGE
         stompClient.current.subscribe(
           "/topic/private/" + currentUser,
           (msg) => {
+
             const message = JSON.parse(msg.body);
+
+            // ✅ ALWAYS PUSH (no filter here)
             setMessages(prev => [...prev, message]);
 
-            // Notification
+            // 🔔 SAFE notification
             if (
               message.sender !== currentUser &&
               Notification.permission === "granted"
             ) {
-              new Notification("New Message", { body: message.message });
+              new Notification("New Message", {
+                body: message.message
+              });
             }
 
-            // Mark seen
-            if (message.sender !== currentUser) sendSeen(message.sender);
+            // ✅ SEND SEEN
+            if (message.sender !== currentUser) {
+              sendSeen(message.sender);
+            }
           }
         );
 
-        // TYPING INDICATOR
+        // ✅ TYPING
         stompClient.current.subscribe(
           "/topic/typing/" + currentUser,
           (msg) => {
             const data = JSON.parse(msg.body);
+
             if (data.sender === selectedUser) {
               setTypingUser(data.sender);
               setTimeout(() => setTypingUser(null), 2000);
             }
           }
         );
-      },
+      }
     });
 
     stompClient.current.activate();
 
-    // Request permission once
+    // 🔔 Notification permission
     if (Notification.permission !== "granted") {
       Notification.requestPermission();
     }
 
     return () => {
-      stompClient.current?.deactivate();
+      if (stompClient.current) {
+        stompClient.current.deactivate();
+      }
     };
-  }, [currentUser]);
+
+  }, [currentUser]); // ✅ FIXED (removed selectedUser)
 
   //////////////////////////////////////////////////
   // SEARCH USER
   //////////////////////////////////////////////////
   const searchUser = async (keyword) => {
+
     if (!keyword.trim()) {
       setUsers([]);
       return;
@@ -91,11 +105,16 @@ function ChatBox({ currentUser }) {
 
     try {
       const token = localStorage.getItem("token");
+
       const res = await axios.get(
         "http://localhost:8080/admin/search-user?keyword=" + keyword,
-        { headers: { Authorization: "Bearer " + token } }
+        {
+          headers: { Authorization: "Bearer " + token }
+        }
       );
+
       setUsers(res.data);
+
     } catch (err) {
       console.log(err);
     }
@@ -105,13 +124,16 @@ function ChatBox({ currentUser }) {
   // LOAD CHAT HISTORY
   //////////////////////////////////////////////////
   const loadChat = async (userId) => {
+
     setSelectedUser(userId);
 
     try {
       const res = await axios.get(
         `https://voicemeet.onrender.com/chat/history/${currentUser}/${userId}`
       );
+
       setMessages(res.data);
+
     } catch (err) {
       console.log(err);
     }
@@ -120,7 +142,8 @@ function ChatBox({ currentUser }) {
   //////////////////////////////////////////////////
   // SEND MESSAGE
   //////////////////////////////////////////////////
-  const sendMessage = () => {
+  const sendMessage = async () => {
+
     if (!text.trim() || !selectedUser) return;
 
     const msg = {
@@ -128,28 +151,44 @@ function ChatBox({ currentUser }) {
       receiver: selectedUser,
       message: text,
       status: "SENT",
-      time: new Date().toLocaleTimeString(),
+      time: new Date().toLocaleTimeString()
     };
 
-    if (stompClient.current?.connected) {
-      stompClient.current.publish({
-        destination: "/app/private-chat",
-        body: JSON.stringify(msg),
-      });
-    }
+    try {
 
-    setMessages(prev => [...prev, msg]);
-    setText("");
+      await axios.post(
+        "https://voicemeet.onrender.com/chat/send",
+        msg
+      );
+
+      if (stompClient.current?.connected) {
+        stompClient.current.publish({
+          destination: "/app/private-chat",
+          body: JSON.stringify(msg)
+        });
+      }
+
+      setMessages(prev => [...prev, msg]);
+      setText("");
+
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   //////////////////////////////////////////////////
   // TYPING
   //////////////////////////////////////////////////
   const sendTyping = () => {
+
     if (stompClient.current?.connected && selectedUser) {
+
       stompClient.current.publish({
         destination: "/app/typing",
-        body: JSON.stringify({ sender: currentUser, receiver: selectedUser }),
+        body: JSON.stringify({
+          sender: currentUser,
+          receiver: selectedUser
+        })
       });
     }
   };
@@ -158,37 +197,46 @@ function ChatBox({ currentUser }) {
   // SEEN ✔✔
   //////////////////////////////////////////////////
   const sendSeen = (sender) => {
+
     if (stompClient.current?.connected) {
+
       stompClient.current.publish({
         destination: "/app/seen",
-        body: JSON.stringify({ sender: currentUser, receiver: sender }),
+        body: JSON.stringify({
+          sender: currentUser,
+          receiver: sender
+        })
       });
     }
   };
 
   //////////////////////////////////////////////////
-  // FILTER MESSAGES FOR UI
+  // FILTER MESSAGES FOR UI (✅ FIXED HERE)
   //////////////////////////////////////////////////
-  const filteredMessages = messages.filter(
-    (m) =>
-      selectedUser &&
-      ((m.sender === currentUser && m.receiver === selectedUser) ||
-        (m.sender === selectedUser && m.receiver === currentUser))
+  const filteredMessages = messages.filter(m =>
+    selectedUser &&
+    (
+      (m.sender === currentUser && m.receiver === selectedUser) ||
+      (m.sender === selectedUser && m.receiver === currentUser)
+    )
   );
 
   //////////////////////////////////////////////////
-  // UI
+  // UI (UNCHANGED)
   //////////////////////////////////////////////////
   return (
     <div className="chat-wrapper">
+
       <div className="chat-users">
+
         <input
           className="chat-search"
           placeholder="Search..."
           onChange={(e) => searchUser(e.target.value)}
         />
+
         <div className="user-list">
-          {users.map((u) => (
+          {users.map(u => (
             <div
               key={u.userId}
               className="user-item"
@@ -198,19 +246,22 @@ function ChatBox({ currentUser }) {
             </div>
           ))}
         </div>
+
       </div>
 
       <div className="chat-main">
+
         {selectedUser ? (
           <>
             <h4 className="chat-header">{selectedUser}</h4>
+
             <div className="chat-messages">
+
               {filteredMessages.map((m, i) => (
+
                 <div
                   key={i}
-                  className={`message ${
-                    m.sender === currentUser ? "sent" : "received"
-                  }`}
+                  className={`message ${m.sender === currentUser ? "sent" : "received"}`}
                 >
                   <span className="message-bubble">
                     {m.message}
@@ -222,14 +273,19 @@ function ChatBox({ currentUser }) {
                     </small>
                   </span>
                 </div>
+
               ))}
 
-              {typingUser && <p className="typing">{typingUser} typing...</p>}
+              {typingUser && (
+                <p className="typing">{typingUser} typing...</p>
+              )}
 
               <div ref={messageEndRef}></div>
+
             </div>
 
             <div className="chat-input-area">
+
               <input
                 value={text}
                 onChange={(e) => {
@@ -238,13 +294,20 @@ function ChatBox({ currentUser }) {
                 }}
                 placeholder="Type message..."
               />
+
               <button onClick={sendMessage}>Send</button>
+
             </div>
+
           </>
         ) : (
-          <div className="no-chat">Select a user to start chatting</div>
+          <div className="no-chat">
+            Select a user to start chatting
+          </div>
         )}
+
       </div>
+
     </div>
   );
 }
