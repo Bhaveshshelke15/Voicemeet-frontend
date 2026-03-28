@@ -34,7 +34,7 @@ export default function Dashboard() {
 
   const fetchEmployees = async () => {
     try {
-      const res = await API.get("/admin/employees"); // ✅ your API
+      const res = await API.get("/admin/users"); // ✅ your API
       setEmployees(res.data);
     } catch (err) {
       console.error(err);
