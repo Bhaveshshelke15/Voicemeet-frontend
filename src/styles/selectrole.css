@@ -1,0 +1,87 @@
+/* FULL PAGE CENTER */
+.role-container {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  font-family: "Segoe UI", sans-serif;
+}
+
+/* CARD */
+.role-card {
+  background: #ffffff;
+  padding: 40px 30px;
+  border-radius: 16px;
+  width: 320px;
+  text-align: center;
+
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  animation: fadeIn 0.6s ease;
+}
+
+/* TITLE */
+.app-title {
+  font-size: 28px;
+  font-weight: bold;
+  color: #0f172a;
+  margin-bottom: 10px;
+}
+
+/* SUBTEXT */
+.subtitle {
+  font-size: 14px;
+  color: #64748b;
+  margin-bottom: 30px;
+}
+
+/* BUTTON GROUP */
+.role-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+/* BUTTON BASE */
+.role-btn {
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: 0.3s;
+  font-weight: 600;
+}
+
+/* ADMIN BUTTON */
+.role-btn.admin {
+  background: #2563eb;
+  color: white;
+}
+
+.role-btn.admin:hover {
+  background: #1d4ed8;
+}
+
+/* USER BUTTON */
+.role-btn.user {
+  background: #10b981;
+  color: white;
+}
+
+.role-btn.user:hover {
+  background: #059669;
+}
+
+/* ANIMATION */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

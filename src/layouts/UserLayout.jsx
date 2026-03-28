@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation } from "react-router-dom";
+import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import "../styles/userLayout.css";
 import { FaHome, FaVideo, FaUsers } from "react-icons/fa";
 import ChatBox from "../components/ChatBox";
@@ -6,11 +6,22 @@ import ChatBox from "../components/ChatBox";
 export default function UserLayout() {
 
   const location = useLocation();
+  const navigate = useNavigate();
   const userId = localStorage.getItem("userId");
+
+  const handleLogout = () => {
+    localStorage.clear();
+    navigate("/"); // go to role selection
+  };
 
   return (
 
     <div className="dashboard-container">
+
+      {/* ✅ LOGOUT BUTTON (GLOBAL) */}
+      <button className="logout-btn-global" onClick={handleLogout}>
+        🚪 Logout
+      </button>
 
       {/* ✅ SIDEBAR (Desktop Only) */}
       <div className="sidebar">
@@ -41,11 +52,7 @@ export default function UserLayout() {
 
         </ul>
 
-        {/* CHAT (Desktop only) */}
-        
-
       </div>
-
 
       {/* ✅ MAIN AREA */}
       <div className="main-area">
@@ -83,7 +90,6 @@ export default function UserLayout() {
         </div>
 
       </div>
-
 
       {/* ✅ MOBILE BOTTOM NAV */}
       <div className="bottom-nav">

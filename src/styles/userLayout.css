@@ -108,3 +108,27 @@
   }
 
 }
+
+
+.logout-btn-global {
+  position: fixed;
+  top: 15px;
+  right: 20px;
+  z-index: 1000;
+
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  transition: 0.3s;
+}
+
+.logout-btn-global:hover {
+  background: #dc2626;
+}
