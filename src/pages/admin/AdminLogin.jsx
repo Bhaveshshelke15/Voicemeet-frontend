@@ -31,7 +31,40 @@ export default function AdminLogin() {
 
       alert("Invalid Credentials");
 
+
+
     }
+
+
+
+
+    try {
+  const res = await adminLogin({
+    username,
+    password
+  });
+
+  console.log("SUCCESS:", res.data);
+
+  localStorage.setItem("token", res.data.token);
+  navigate("/admin/dashboard");
+
+} catch (error) {
+
+  console.log("ERROR FULL:", error);
+
+  if (error.response) {
+    // Backend responded
+    alert("Backend Error: " + JSON.stringify(error.response.data));
+
+  } else if (error.request) {
+    // No response received
+    alert("Server not reachable / Timeout / Network issue");
+
+  } else {
+    alert("Error: " + error.message);
+  }
+}
 
   };
 
